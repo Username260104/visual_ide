@@ -4,91 +4,322 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
-
 @layer base {
   .theme {
     --font-heading: var(--font-sans);
     --font-sans: var(--font-sans);
   }
+
+  /* VS Code Dark theme — always dark, no light mode */
   :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    /* shadcn semantic tokens mapped to VS Code Dark */
+    --background: #1e1e1e;
+    --foreground: #cccccc;
+    --card: #252526;
+    --card-foreground: #cccccc;
+    --popover: #2d2d2d;
+    --popover-foreground: #cccccc;
+    --primary: #007acc;
+    --primary-foreground: #ffffff;
+    --secondary: #3a3d41;
+    --secondary-foreground: #cccccc;
+    --muted: #2d2d2d;
+    --muted-foreground: #9d9d9d;
+    --accent: #094771;
+    --accent-foreground: #ffffff;
+    --destructive: #f44747;
+    --border: #3c3c3c;
+    --input: #3c3c3c;
+    --ring: #007fd4;
+    --radius: 4px;
+
+    /* shadcn sidebar tokens */
+    --sidebar: #252526;
+    --sidebar-foreground: #cccccc;
+    --sidebar-primary: #007acc;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #2a2d2e;
+    --sidebar-accent-foreground: #cccccc;
+    --sidebar-border: #3c3c3c;
+    --sidebar-ring: #007fd4;
+
+    /* === VIDE custom tokens === */
+
+    /* Base surfaces */
+    --bg-base: #1e1e1e;
+    --bg-surface: #252526;
+    --bg-overlay: #2d2d2d;
+    --bg-input: #3c3c3c;
+    --bg-hover: #2a2d2e;
+    --bg-active: #37373d;
+    --bg-selected: #094771;
+
+    /* Borders */
+    --border-default: #3c3c3c;
+    --border-subtle: #2b2b2b;
+    --border-focus: #007fd4;
+
+    /* Text */
+    --text-primary: #cccccc;
+    --text-secondary: #9d9d9d;
+    --text-muted: #6a6a6a;
+    --text-accent: #3794ff;
+    --text-inverse: #ffffff;
+
+    /* Activity Bar */
+    --activitybar-bg: #333333;
+    --activitybar-fg: #ffffff;
+    --activitybar-inactive: #858585;
+    --activitybar-border: #3c3c3c;
+
+    /* Sidebar */
+    --sidebar-bg: #252526;
+    --sidebar-fg: #cccccc;
+    --sidebar-header-bg: #383838;
+    --sidebar-header-fg: #cccccc;
+
+    /* Status Bar */
+    --statusbar-bg: #007acc;
+    --statusbar-fg: #ffffff;
+
+    /* Title Bar */
+    --titlebar-bg: #3c3c3c;
+    --titlebar-fg: #cccccc;
+
+    /* Graph / Canvas */
+    --canvas-bg: #1e1e1e;
+    --canvas-grid: #2a2a2a;
+    --canvas-grid-bold: #333333;
+
+    /* Node Card */
+    --node-bg: #252526;
+    --node-border: #3c3c3c;
+    --node-border-selected: #007fd4;
+    --node-shadow: rgba(0, 0, 0, 0.4);
+
+    /* Edge */
+    --edge-default: #585858;
+    --edge-hover: #007fd4;
+
+    /* Node Status Colors */
+    --status-unclassified: #858585;
+    --status-reviewing: #dcdcaa;
+    --status-promising: #4ec9b0;
+    --status-final: #6a9955;
+    --status-dropped: #f44747;
+
+    /* Interactive */
+    --accent-color: #007acc;
+    --accent-primary: #007acc;
+    --accent-secondary: #9b59b6;
+    --accent-hover: #1c86c9;
+    --accent-subtle: rgba(0, 122, 204, 0.15);
+    --button-bg: #0e639c;
+    --button-fg: #ffffff;
+    --button-hover: #1177bb;
+    --button-secondary-bg: #3a3d41;
+    --button-secondary-fg: #cccccc;
+
+    /* Scrollbar */
+    --scrollbar-thumb: rgba(121, 121, 121, 0.4);
+    --scrollbar-thumb-hover: rgba(100, 100, 100, 0.7);
+
+    /* Misc */
+    --badge-bg: #4d4d4d;
+    --badge-fg: #ffffff;
+    --tooltip-bg: #383838;
+    --tooltip-fg: #cccccc;
   }
-  .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
-  }
+
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--border);
+    outline-color: var(--ring);
   }
   body {
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* React Flow overrides */
+.react-flow__background {
+  background-color: var(--canvas-bg) !important;
+}
+
+/* === Node handle styling === */
+.vide-handle {
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--edge-default) !important;
+  border: 2px solid var(--node-bg) !important;
+  border-radius: 50% !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 0 0 3px rgba(37, 37, 38, 0.95) !important;
+  z-index: 5 !important;
+}
+
+.vide-handle-target {
+  top: -16px !important;
+}
+
+.vide-handle-source {
+  bottom: -16px !important;
+}
+
+.vide-handle-passive {
+  opacity: 0.95 !important;
+  pointer-events: none !important;
+}
+
+.vide-handle-active {
+  background: var(--accent-primary) !important;
+  box-shadow:
+    0 0 0 3px rgba(37, 37, 38, 0.95),
+    0 0 0 6px rgba(0, 122, 204, 0.18) !important;
+}
+
+/* Increase handle clickable area */
+.react-flow__handle::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+}
+
+/* === Polishing animations === */
+
+/* Node appear animation */
+@keyframes nodeAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.node-appear {
+  animation: nodeAppear 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Panel slide transitions */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.panel-slide-right {
+  animation: slideInRight 0.2s ease-out forwards;
+}
+
+.panel-slide-left {
+  animation: slideInLeft 0.2s ease-out forwards;
+}
+
+/* Status color transition on node cards */
+.status-dot-transition {
+  transition: background-color 0.3s ease;
+}
+
+/* Direction bar transition */
+.direction-bar-transition {
+  transition: background-color 0.3s ease;
+}
+
+/* Chip selection pulse */
+@keyframes chipSelect {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.chip-select {
+  animation: chipSelect 0.2s ease;
+}
+
+/* Dialog fade in */
+@keyframes dialogFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialogScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.dialog-backdrop {
+  animation: dialogFadeIn 0.15s ease-out forwards;
+}
+
+.dialog-content {
+  animation: dialogScaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Progress bar pulse animation */
+@keyframes progressPulse {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
   }
 }
