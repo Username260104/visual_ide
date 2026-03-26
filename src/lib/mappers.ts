@@ -1,5 +1,22 @@
-import type { Node as PrismaNode, Direction as PrismaDirection, Project as PrismaProject } from '@/generated/prisma/client';
-import type { NodeData, Direction, Project, NodeSource, NodeStatus } from './types';
+import type {
+  ActivityEvent as PrismaActivityEvent,
+  Node as PrismaNode,
+  Direction as PrismaDirection,
+  Project as PrismaProject,
+} from '@/generated/prisma/client';
+import type {
+  ActivityEventActorType,
+  ActivityEventData,
+  ActivityEventKind,
+  ActivityEventSource,
+  NodeData,
+  Direction,
+  Project,
+  JsonValue,
+  NodeSource,
+  NodeStatus,
+  PromptSource,
+} from './types';
 
 export function mapPrismaNodeToNodeData(n: PrismaNode): NodeData {
   return {
@@ -10,7 +27,10 @@ export function mapPrismaNodeToNodeData(n: PrismaNode): NodeData {
     parentNodeId: n.parentNodeId,
     directionId: n.directionId,
     source: n.source as NodeSource,
-    prompt: n.prompt,
+    prompt: n.resolvedPrompt ?? n.prompt ?? n.userIntent,
+    userIntent: n.userIntent,
+    resolvedPrompt: n.resolvedPrompt,
+    promptSource: n.promptSource as PromptSource | null,
     seed: n.seed,
     modelUsed: n.modelUsed,
     width: n.width,
@@ -21,8 +41,27 @@ export function mapPrismaNodeToNodeData(n: PrismaNode): NodeData {
     note: n.note,
     status: n.status as NodeStatus,
     statusReason: n.statusReason,
+    nodeOrdinal: n.nodeOrdinal,
     versionNumber: n.versionNumber,
     position: { x: n.positionX, y: n.positionY },
+  };
+}
+
+export function mapPrismaActivityEventToActivityEventData(
+  event: PrismaActivityEvent
+): ActivityEventData {
+  return {
+    id: event.id,
+    projectId: event.projectId,
+    nodeId: event.nodeId,
+    directionId: event.directionId,
+    kind: event.kind as ActivityEventKind,
+    actorType: event.actorType as ActivityEventActorType | null,
+    actorLabel: event.actorLabel,
+    source: event.source as ActivityEventSource,
+    summary: event.summary,
+    payload: event.payload as JsonValue,
+    createdAt: event.createdAt.getTime(),
   };
 }
 
@@ -35,6 +74,10 @@ export function mapPrismaDirectionToDirection(
     projectId: d.projectId,
     name: d.name,
     color: d.color,
+    thesis: d.thesis,
+    fitCriteria: d.fitCriteria,
+    antiGoal: d.antiGoal,
+    referenceNotes: d.referenceNotes,
     nodeCount,
   };
 }
@@ -46,6 +89,10 @@ export function mapPrismaProjectToProject(
     id: p.id,
     name: p.name,
     description: p.description,
+    brief: p.brief,
+    constraints: p.constraints,
+    targetAudience: p.targetAudience,
+    brandTone: p.brandTone,
     thumbnailUrl: p.thumbnailUrl,
     createdAt: p.createdAt.getTime(),
     updatedAt: p.updatedAt.getTime(),

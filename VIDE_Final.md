@@ -101,7 +101,7 @@ Direction {
 ### Sidebar (260px, 접기 가능)
 - 방향 목록 (컬러 dot + 이름 + 노드 수)
 - 미분류 노드 수
-- "초기 이미지 생성" 버튼 (AI 경로 진입점)
+- "이미지 생성" 버튼 (AI 경로 진입점)
 - "이미지 추가" 버튼 (드롭 경로 진입점)
 
 ### Node Graph (중앙 메인)
@@ -168,7 +168,7 @@ Next.js 14 + Tailwind + shadcn/ui + Zustand + React Flow + Claude API + Replicat
 - **여기서 멈추고 확인**
 
 ### Step 4: AI 초기 생성
-- Sidebar에 "초기 이미지 생성" 버튼
+- Sidebar에 "이미지 생성" 버튼
 - 키워드/컨셉 입력 (간단한 텍스트 필드)
 - Claude API → 프롬프트 6개 생성
 - Replicate API → 이미지 6장 생성

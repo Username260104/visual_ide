@@ -1,8 +1,15 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { MODELS } from '@/lib/constants';
+import {
+  StrategyContextCard,
+  type StrategyContextItem,
+} from '@/components/context/StrategyContextCard';
+import { StagingBatchPreview } from '@/components/staging/StagingBatchPreview';
+import { ModalShell } from '@/components/ui/ModalShell';
+import { useProjectStrategy } from '@/hooks/useProjectStrategy';
 import { fetchJson } from '@/lib/clientApi';
+import { MODELS } from '@/lib/constants';
 import {
   getDefaultAspectRatio,
   getDefaultResolution,
@@ -11,10 +18,9 @@ import {
   getResolutionOptions,
   getSelectableOutputCounts,
 } from '@/lib/imageGeneration';
-import { NODE_COLUMN_GAP, NODE_ROW_GAP } from '@/lib/nodeLayout';
 import { useNodeStore } from '@/stores/nodeStore';
+import { useStagingStore } from '@/stores/stagingStore';
 import { useUIStore } from '@/stores/uiStore';
-import { ModalShell } from '@/components/ui/ModalShell';
 
 const DEFAULT_MODEL_ID = MODELS[0]?.id ?? 'flux-schnell';
 const DEFAULT_MODEL = getModelDefinition(DEFAULT_MODEL_ID);
@@ -26,8 +32,50 @@ const QUICK_SIZE_PRESETS = [
   [768, 1024],
 ] as const;
 
+const COPY = {
+  title: '이미지 생성',
+  projectContextTitle: '프로젝트 컨텍스트',
+  projectContextSubtitle:
+    '브리프와 제약을 보면서 프롬프트를 다듬을 수 있습니다.',
+  projectContextEmpty:
+    '아직 프로젝트 전략이 비어 있습니다. Settings에서 브리프를 입력하면 생성 시 함께 참고할 수 있습니다.',
+  intent: '사용자 의도',
+  improve: 'AI 개선',
+  improving: '개선 중...',
+  intentPlaceholder:
+    '생성하고 싶은 이미지의 목적과 톤을 구체적으로 적어 주세요.',
+  improvedPrompt: 'AI 개선본',
+  improvedPromptHint:
+    '현재 생성에는 개선본이 사용됩니다. 원문을 다시 수정하면 개선본은 초기화됩니다.',
+  model: '모델',
+  ratio: '비율',
+  customSize: '직접 입력',
+  sizeLabel: '크기',
+  resolution: '해상도',
+  guidance: '가이던스',
+  steps: '스텝',
+  outputCount: '생성 수량',
+  batchFallback:
+    '이 모델은 배치 생성을 지원하지 않아 선택한 수량만큼 병렬 요청으로 처리합니다.',
+  cancel: '취소',
+  generate: '생성',
+  generating: '생성 중...',
+  stagingTitle: '최근 생성 staging',
+  improvePending:
+    'AI가 입력한 의도를 더 구체적인 프롬프트로 정리하고 있습니다...',
+  improveDone:
+    'AI 개선본이 준비되었습니다. 생성 시 개선된 프롬프트를 사용합니다.',
+  improveError:
+    '프롬프트 개선에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+  selectProject: '프로젝트를 먼저 선택해 주세요.',
+  generatePending: '이미지를 생성하는 중입니다...',
+  generateError:
+    '이미지 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+} as const;
+
 export function GenerateDialog() {
-  const [prompt, setPrompt] = useState('');
+  const [userIntent, setUserIntent] = useState('');
+  const [resolvedPrompt, setResolvedPrompt] = useState<string | null>(null);
   const [numOutputs, setNumOutputs] = useState(
     getSelectableOutputCounts(DEFAULT_MODEL).at(-1) ?? 1
   );
@@ -45,31 +93,54 @@ export function GenerateDialog() {
   const [status, setStatus] = useState('');
   const [isImproving, setIsImproving] = useState(false);
 
-  const addNode = useNodeStore((state) => state.addNode);
   const projectId = useNodeStore((state) => state.projectId);
+  const stagingBatches = useStagingStore((state) => state.batches);
+  const stageBatch = useStagingStore((state) => state.stageBatch);
   const isGenerating = useUIStore((state) => state.isGenerating);
   const setGenerating = useUIStore((state) => state.setGenerating);
   const isOpen = useUIStore((state) => state.isGenerateDialogOpen);
   const setOpen = useUIStore((state) => state.setGenerateDialogOpen);
+  const {
+    project,
+    isLoading: isProjectStrategyLoading,
+    error: projectStrategyError,
+  } = useProjectStrategy(isOpen ? projectId : null);
 
   const model = getModelDefinition(modelId);
   const busy = isGenerating || isImproving;
   const isCustomSize = aspectRatio === 'custom' && model.supportsCustomSize;
+  const effectivePrompt = resolvedPrompt?.trim() || userIntent.trim();
 
   const availableRatios = useMemo(
     () => getGenerationAspectRatios(model, { includeCustom: true }),
     [model]
   );
-  const outputOptions = useMemo(
-    () => getSelectableOutputCounts(model),
-    [model]
+  const outputOptions = useMemo(() => getSelectableOutputCounts(model), [model]);
+  const resolutionOptions = useMemo(() => getResolutionOptions(model), [model]);
+  const latestGenerateBatch = useMemo(
+    () =>
+      projectId
+        ? stagingBatches.find(
+            (batch) =>
+              batch.projectId === projectId &&
+              batch.sourceKind === 'generate-dialog'
+          ) ?? null
+        : null,
+    [projectId, stagingBatches]
   );
-  const resolutionOptions = useMemo(
-    () => getResolutionOptions(model),
-    [model]
+  const projectContextItems = useMemo<StrategyContextItem[]>(
+    () => [
+      { label: '프로젝트 브리프', value: project?.brief },
+      { label: '브랜드 톤', value: project?.brandTone },
+      { label: '타깃 오디언스', value: project?.targetAudience },
+      { label: '제약 조건', value: project?.constraints },
+    ],
+    [project]
   );
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   const resetTransientState = () => {
     setStatus('');
@@ -106,11 +177,13 @@ export function GenerateDialog() {
   };
 
   const handleImprove = async () => {
-    const trimmedPrompt = prompt.trim();
-    if (!trimmedPrompt || busy) return;
+    const trimmedIntent = userIntent.trim();
+    if (!trimmedIntent || busy) {
+      return;
+    }
 
     setIsImproving(true);
-    setStatus('프롬프트를 다듬는 중입니다...');
+    setStatus(COPY.improvePending);
 
     try {
       const { improvedPrompt } = await fetchJson<{ improvedPrompt: string }>(
@@ -118,31 +191,32 @@ export function GenerateDialog() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: trimmedPrompt }),
+          body: JSON.stringify({ prompt: trimmedIntent }),
         }
       );
 
-      setPrompt(improvedPrompt);
-      setStatus('프롬프트를 더 구체적으로 정리했습니다.');
+      setResolvedPrompt(improvedPrompt);
+      setStatus(COPY.improveDone);
     } catch (error) {
       console.error('Improve error:', error);
-      setStatus('프롬프트 개선에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+      setStatus(COPY.improveError);
     } finally {
       setIsImproving(false);
     }
   };
 
   const handleGenerate = async () => {
-    const trimmedPrompt = prompt.trim();
-    if (!trimmedPrompt || isGenerating) return;
+    if (!effectivePrompt || isGenerating) {
+      return;
+    }
 
     if (!projectId) {
-      setStatus('프로젝트를 먼저 선택해 주세요.');
+      setStatus(COPY.selectProject);
       return;
     }
 
     setGenerating(true);
-    setStatus(`${model.name}로 이미지를 생성하는 중입니다...`);
+    setStatus(`${model.name} ${COPY.generatePending}`);
 
     try {
       const { imageUrls } = await fetchJson<{ imageUrls: string[] }>(
@@ -151,7 +225,7 @@ export function GenerateDialog() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            prompt: trimmedPrompt,
+            prompt: effectivePrompt,
             numOutputs,
             projectId,
             modelId: model.id,
@@ -169,37 +243,29 @@ export function GenerateDialog() {
         }
       );
 
-      await Promise.all(
-        imageUrls.map((imageUrl, index) =>
-          addNode({
-            imageUrl,
-            source: 'ai-generated',
-            prompt: trimmedPrompt,
-            modelUsed: model.name,
-            aspectRatio,
-            width: isCustomSize ? customWidth : null,
-            height: isCustomSize ? customHeight : null,
-            position: {
-              x: (index % 4) * NODE_COLUMN_GAP,
-              y: Math.floor(index / 4) * NODE_ROW_GAP,
-            },
-          })
-        )
+      stageBatch({
+        sourceKind: 'generate-dialog',
+        projectId,
+        userIntent: userIntent.trim(),
+        resolvedPrompt: effectivePrompt,
+        promptSource: resolvedPrompt ? 'ai-improved' : 'user-authored',
+        modelId: model.id,
+        modelLabel: model.name,
+        aspectRatio,
+        width: isCustomSize ? customWidth : null,
+        height: isCustomSize ? customHeight : null,
+        imageUrls,
+      });
+
+      setStatus(
+        `${imageUrls.length}개의 결과를 staging에 올렸습니다. 아직 캔버스에는 추가되지 않았습니다.`
       );
-
-      setStatus(`${imageUrls.length}장의 이미지를 생성했습니다.`);
-
-      window.setTimeout(() => {
-        resetTransientState();
-        setOpen(false);
-        setPrompt('');
-      }, 500);
     } catch (error) {
       console.error('Generation error:', error);
       setStatus(
         error instanceof Error
           ? `오류: ${error.message}`
-          : '이미지 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.'
+          : COPY.generateError
       );
     } finally {
       setGenerating(false);
@@ -217,30 +283,43 @@ export function GenerateDialog() {
           className="text-sm font-semibold"
           style={{ color: 'var(--text-primary)' }}
         >
-          이미지 생성
+          {COPY.title}
         </h3>
 
+        <StrategyContextCard
+          title={COPY.projectContextTitle}
+          items={projectContextItems}
+          isLoading={Boolean(projectId) && isProjectStrategyLoading}
+          error={projectStrategyError}
+          emptyMessage={COPY.projectContextEmpty}
+        />
+
         <DialogSection
-          label="프롬프트"
+          label={COPY.intent}
           right={
             <button
               className="rounded px-2 py-0.5 text-[11px] transition-opacity hover:opacity-80"
               style={{
                 backgroundColor: 'var(--bg-active)',
                 color: 'var(--text-accent)',
-                opacity: !prompt.trim() || busy ? 0.4 : 1,
+                opacity: !userIntent.trim() || busy ? 0.4 : 1,
               }}
               onClick={() => void handleImprove()}
-              disabled={!prompt.trim() || busy}
+              disabled={!userIntent.trim() || busy}
             >
-              {isImproving ? '개선 중...' : 'AI 개선'}
+              {isImproving ? COPY.improving : COPY.improve}
             </button>
           }
         >
           <textarea
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            placeholder="생성할 이미지를 구체적으로 설명해 주세요."
+            value={userIntent}
+            onChange={(event) => {
+              setUserIntent(event.target.value);
+              if (resolvedPrompt !== null) {
+                setResolvedPrompt(null);
+              }
+            }}
+            placeholder={COPY.intentPlaceholder}
             className="min-h-[72px] w-full resize-none rounded px-2.5 py-2 text-xs focus:outline-none"
             style={{
               backgroundColor: 'var(--bg-input)',
@@ -252,7 +331,25 @@ export function GenerateDialog() {
           />
         </DialogSection>
 
-        <DialogSection label="모델">
+        {resolvedPrompt && resolvedPrompt.trim() !== userIntent.trim() && (
+          <DialogSection label={COPY.improvedPrompt}>
+            <div
+              className="rounded px-2.5 py-2 text-xs leading-5"
+              style={{
+                backgroundColor: 'var(--bg-active)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-default)',
+              }}
+            >
+              {resolvedPrompt}
+            </div>
+            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              {COPY.improvedPromptHint}
+            </p>
+          </DialogSection>
+        )}
+
+        <DialogSection label={COPY.model}>
           <div className="grid grid-cols-2 gap-1.5">
             {MODELS.map((item) => (
               <button
@@ -271,7 +368,7 @@ export function GenerateDialog() {
           </div>
         </DialogSection>
 
-        <DialogSection label="비율">
+        <DialogSection label={COPY.ratio}>
           <div className="flex flex-wrap gap-1">
             {availableRatios.map((ratio) => {
               const selected = aspectRatio === ratio;
@@ -286,7 +383,7 @@ export function GenerateDialog() {
                   disabled={busy}
                 >
                   {ratio === 'custom' ? (
-                    <span>직접 입력</span>
+                    <span>{COPY.customSize}</span>
                   ) : (
                     <>
                       <div
@@ -312,7 +409,7 @@ export function GenerateDialog() {
 
         {isCustomSize && (
           <DialogSection
-            label={`해상도 (${model.sizeMultiple}px 단위, 최대 ${model.maxWidth}px)`}
+            label={`${COPY.sizeLabel} (${model.sizeMultiple}px 단위, 최대 ${model.maxWidth}px)`}
           >
             <div className="flex items-center gap-2">
               <DimensionInput
@@ -383,7 +480,7 @@ export function GenerateDialog() {
         )}
 
         {resolutionOptions.length > 0 && !isCustomSize && (
-          <DialogSection label="해상도">
+          <DialogSection label={COPY.resolution}>
             <div className="flex gap-1">
               {resolutionOptions.map((item) => (
                 <button
@@ -401,7 +498,7 @@ export function GenerateDialog() {
         )}
 
         {model.supportsGuidance && (
-          <DialogSection label={`가이던스 (${guidance})`}>
+          <DialogSection label={`${COPY.guidance} (${guidance})`}>
             <input
               type="range"
               min={0}
@@ -416,7 +513,7 @@ export function GenerateDialog() {
         )}
 
         {model.maxSteps && (
-          <DialogSection label={`스텝 수 (${steps})`}>
+          <DialogSection label={`${COPY.steps} (${steps})`}>
             <input
               type="range"
               min={1}
@@ -430,7 +527,7 @@ export function GenerateDialog() {
           </DialogSection>
         )}
 
-        <DialogSection label="생성 수량">
+        <DialogSection label={COPY.outputCount}>
           <div className="flex flex-wrap gap-1">
             {outputOptions.map((count) => (
               <button
@@ -446,8 +543,7 @@ export function GenerateDialog() {
           </div>
           {!model.supportsBatch && numOutputs > 1 && (
             <div className="mt-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              이 모델은 배치 생성을 지원하지 않아 {numOutputs}번 병렬 호출로
-              처리합니다.
+              {COPY.batchFallback}
             </div>
           )}
         </DialogSection>
@@ -456,6 +552,10 @@ export function GenerateDialog() {
           <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
             {status}
           </div>
+        )}
+
+        {latestGenerateBatch && (
+          <StagingBatchPreview batch={latestGenerateBatch} title={COPY.stagingTitle} />
         )}
 
         {isGenerating && (
@@ -484,7 +584,7 @@ export function GenerateDialog() {
             onClick={closeDialog}
             disabled={busy}
           >
-            취소
+            {COPY.cancel}
           </button>
           <button
             className="rounded px-3 py-1.5 text-xs font-semibold"
@@ -493,12 +593,12 @@ export function GenerateDialog() {
                 ? 'var(--bg-active)'
                 : 'var(--accent-primary)',
               color: 'var(--text-inverse)',
-              opacity: !prompt.trim() || busy ? 0.5 : 1,
+              opacity: !effectivePrompt || busy ? 0.5 : 1,
             }}
             onClick={() => void handleGenerate()}
-            disabled={!prompt.trim() || busy}
+            disabled={!effectivePrompt || busy}
           >
-            {isGenerating ? '생성 중...' : `${numOutputs}장 생성`}
+            {isGenerating ? COPY.generating : `${numOutputs}개 ${COPY.generate}`}
           </button>
         </div>
       </div>

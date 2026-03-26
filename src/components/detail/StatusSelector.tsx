@@ -14,22 +14,25 @@ const STATUSES: NodeStatus[] = [
 interface StatusSelectorProps {
   status: NodeStatus;
   statusReason: string | null;
-  onChange: (status: NodeStatus, reason: string | null) => void;
+  onStatusChange: (status: NodeStatus) => void;
+  onStatusReasonChange: (reason: string | null) => void;
 }
 
 export function StatusSelector({
   status,
   statusReason,
-  onChange,
+  onStatusChange,
+  onStatusReasonChange,
 }: StatusSelectorProps) {
   const reasonRequired = requiresStatusReason(status);
   const reasonValue = statusReason ?? '';
 
   const handleStatusClick = (nextStatus: NodeStatus) => {
-    onChange(
-      nextStatus,
-      requiresStatusReason(nextStatus) ? reasonValue || null : null
-    );
+    onStatusChange(nextStatus);
+
+    if (!requiresStatusReason(nextStatus) && statusReason !== null) {
+      onStatusReasonChange(null);
+    }
   };
 
   return (
@@ -76,11 +79,11 @@ export function StatusSelector({
         <input
           type="text"
           value={reasonValue}
-          onChange={(event) => onChange(status, event.target.value || null)}
+          onChange={(event) => onStatusReasonChange(event.target.value || null)}
           placeholder={
             status === 'final'
-              ? '최종 선택 이유를 적어 주세요.'
-              : '보류 또는 탈락 이유를 적어 주세요.'
+              ? '최종 선택 이유를 적어 주세요'
+              : '보류 또는 기각 이유를 적어 주세요'
           }
           className="mt-1 w-full rounded px-2.5 py-1.5 text-xs"
           style={{
@@ -94,6 +97,6 @@ export function StatusSelector({
   );
 }
 
-function requiresStatusReason(status: NodeStatus) {
+export function requiresStatusReason(status: NodeStatus) {
   return status === 'final' || status === 'dropped';
 }

@@ -7,6 +7,7 @@ import {
   STATUS_LABELS,
   getNodeDisplaySize,
 } from '@/lib/constants';
+import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
 import type { NodeData } from '@/lib/types';
 import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
@@ -29,7 +30,7 @@ function ImageNodeComponent({
     height: number;
   } | null>(null);
 
-  const isActive = selected || dragging;
+  const isActive = selected;
   const direction = data.directionId ? directions[data.directionId] : null;
   const directionColor = direction?.color ?? 'var(--border-default)';
   const directionLabel = direction?.name ?? UNCLASSIFIED_LABEL;
@@ -68,10 +69,11 @@ function ImageNodeComponent({
       return;
     }
 
-    updateNode(data.id, {
+    void updateNode(data.id, {
       width: naturalWidth,
       height: naturalHeight,
-      aspectRatio: data.aspectRatio ?? getAspectRatioLabel(naturalWidth, naturalHeight),
+      aspectRatio:
+        data.aspectRatio ?? getAspectRatioLabel(naturalWidth, naturalHeight),
     });
   };
 
@@ -82,7 +84,7 @@ function ImageNodeComponent({
         width: displaySize.w,
         height: displaySize.h + NODE_META_H + NODE_BAR_H,
         overflow: 'visible',
-        transform: isActive ? 'translateY(-2px)' : 'translateY(0)',
+        transform: dragging || isActive ? 'translateY(-2px)' : 'translateY(0)',
         transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
         cursor: dragging ? 'grabbing' : 'grab',
       }}
@@ -121,7 +123,7 @@ function ImageNodeComponent({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={data.imageUrl}
-            alt={`v${data.versionNumber}`}
+            alt={getNodeSequenceLabel(data)}
             className="h-full w-full object-contain"
             draggable={false}
             onLoad={handleImageLoad}
@@ -135,7 +137,7 @@ function ImageNodeComponent({
               backdropFilter: 'blur(4px)',
             }}
           >
-            v{data.versionNumber}
+            {getNodeSequenceLabel(data)}
           </div>
 
           <div

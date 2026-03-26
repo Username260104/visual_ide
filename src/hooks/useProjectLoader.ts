@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useState } from 'react';
 import { useDirectionStore } from '@/stores/directionStore';
@@ -10,11 +10,6 @@ export function useProjectLoader(projectId: string) {
   const [loadState, setLoadState] = useState<LoadState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [reloadCount, setReloadCount] = useState(0);
-
-  const loadNodes = useNodeStore((state) => state.loadNodes);
-  const clearNodes = useNodeStore((state) => state.clearNodes);
-  const loadDirections = useDirectionStore((state) => state.loadDirections);
-  const clearDirections = useDirectionStore((state) => state.clearDirections);
 
   const reload = useCallback(() => {
     setReloadCount((count) => count + 1);
@@ -28,7 +23,10 @@ export function useProjectLoader(projectId: string) {
       setError(null);
 
       try {
-        await Promise.all([loadNodes(projectId), loadDirections(projectId)]);
+        await Promise.all([
+          useNodeStore.getState().loadNodes(projectId),
+          useDirectionStore.getState().loadDirections(projectId),
+        ]);
 
         if (!cancelled) {
           setLoadState('ready');
@@ -39,7 +37,7 @@ export function useProjectLoader(projectId: string) {
           setError(
             loadError instanceof Error
               ? loadError.message
-              : '프로젝트 데이터를 불러오지 못했습니다.'
+              : '?꾨줈?앺듃 ?곗씠?곕? 遺덈윭?ㅼ? 紐삵뻽?듬땲??'
           );
         }
       }
@@ -49,17 +47,10 @@ export function useProjectLoader(projectId: string) {
 
     return () => {
       cancelled = true;
-      clearNodes();
-      clearDirections();
+      useNodeStore.getState().clearNodes();
+      useDirectionStore.getState().clearDirections();
     };
-  }, [
-    projectId,
-    reloadCount,
-    loadNodes,
-    clearNodes,
-    loadDirections,
-    clearDirections,
-  ]);
+  }, [projectId, reloadCount]);
 
   return {
     isReady: loadState === 'ready',
@@ -68,3 +59,5 @@ export function useProjectLoader(projectId: string) {
     reload,
   };
 }
+
+

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ModalShell } from '@/components/ui/ModalShell';
 import { NODE_ATTACHMENT_GAP, NODE_CHILD_OFFSET_Y } from '@/lib/nodeLayout';
+import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
 import { useNodeStore } from '@/stores/nodeStore';
 import { useUIStore } from '@/stores/uiStore';
 
@@ -21,7 +22,9 @@ export function ParentSelectDialog() {
     [nodes]
   );
 
-  if (!pendingDrop) return null;
+  if (!pendingDrop) {
+    return null;
+  }
 
   const handleClose = () => {
     if (!isSubmitting) {
@@ -31,7 +34,9 @@ export function ParentSelectDialog() {
   };
 
   const handleSelect = async (parentNodeId: string | null) => {
-    if (isSubmitting) return;
+    if (isSubmitting) {
+      return;
+    }
 
     const { imageUrls, position } = pendingDrop;
     const parentNode = parentNodeId ? nodes[parentNodeId] : null;
@@ -85,7 +90,7 @@ export function ParentSelectDialog() {
       </h3>
 
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-        드롭한 이미지를 루트로 추가하거나, 기존 노드의 자식으로 연결할 수
+        새 이미지를 루트로 추가하거나, 기존 이미지 아래에 자식으로 연결할 수
         있습니다.
       </p>
 
@@ -108,14 +113,14 @@ export function ParentSelectDialog() {
         >
           R
         </span>
-        <span>새 루트 노드로 추가</span>
+        <span>새 루트 이미지로 추가</span>
       </button>
 
       <div
         className="text-[10px] font-semibold uppercase tracking-wider"
         style={{ color: 'var(--text-muted)' }}
       >
-        기존 노드에 연결
+        기존 이미지에 연결
       </div>
 
       <div className="flex max-h-[280px] flex-col gap-1 overflow-y-auto">
@@ -134,12 +139,12 @@ export function ParentSelectDialog() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={node.imageUrl}
-              alt={`v${node.versionNumber}`}
+              alt={getNodeSequenceLabel(node)}
               className="h-8 w-8 shrink-0 rounded object-cover"
             />
             <div className="flex min-w-0 flex-col">
               <span className="truncate text-xs">
-                v{node.versionNumber}
+                {getNodeSequenceLabel(node)}
                 {node.parentNodeId ? '' : ' (루트)'}
               </span>
               <span

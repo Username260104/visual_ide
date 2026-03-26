@@ -1,0 +1,11 @@
+ALTER TABLE "projects"
+ADD COLUMN "brief" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "constraints_text" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "target_audience" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "brand_tone" TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE "directions"
+ADD COLUMN "thesis" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "fit_criteria" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "anti_goal" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "reference_notes" TEXT NOT NULL DEFAULT '';

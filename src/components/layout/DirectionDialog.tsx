@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { ModalShell } from '@/components/ui/ModalShell';
 import { DIRECTION_COLOR_PRESETS } from '@/lib/constants';
 import { useDirectionStore } from '@/stores/directionStore';
 import { useUIStore } from '@/stores/uiStore';
-import { ModalShell } from '@/components/ui/ModalShell';
 
 export function DirectionDialog() {
   const isOpen = useUIStore((state) => state.isDirectionDialogOpen);
@@ -47,7 +47,7 @@ export function DirectionDialog() {
       setError(
         createError instanceof Error
           ? createError.message
-          : '디렉션을 만들지 못했습니다.'
+          : '브랜치를 만들지 못했습니다.'
       );
     } finally {
       setIsCreating(false);
@@ -65,7 +65,7 @@ export function DirectionDialog() {
           className="text-sm font-semibold"
           style={{ color: 'var(--text-primary)' }}
         >
-          새 Direction 만들기
+          새 브랜치 만들기
         </h3>
 
         <div className="flex flex-col gap-1">

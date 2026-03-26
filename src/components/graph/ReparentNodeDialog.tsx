@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ModalShell } from '@/components/ui/ModalShell';
 import { collectDescendantIds } from '@/lib/nodeTree';
+import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
 import type { NodeData } from '@/lib/types';
 import { useNodeStore } from '@/stores/nodeStore';
 
@@ -83,9 +84,9 @@ export function ReparentNodeDialog({
       </h3>
 
       <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-        <p>대상 노드: v{targetNode.versionNumber}</p>
+        <p>대상 이미지: {getNodeSequenceLabel(targetNode)}</p>
         <p className="mt-1">
-          현재 부모: {currentParent ? `v${currentParent.versionNumber}` : '루트'}
+          현재 부모: {currentParent ? getNodeSequenceLabel(currentParent) : '루트'}
         </p>
       </div>
 
@@ -96,7 +97,8 @@ export function ReparentNodeDialog({
           color: 'var(--text-muted)',
         }}
       >
-        부모만 변경합니다. direction과 버전 번호는 그대로 유지됩니다.
+        부모만 변경합니다. 이미지의 고유 순번은 유지되고, 계보 정보만 새 구조에
+        맞춰 다시 계산됩니다.
       </div>
 
       <button
@@ -148,7 +150,7 @@ export function ReparentNodeDialog({
 
         {validParents.length === 0 && (
           <p className="px-2 py-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-            선택 가능한 부모 노드가 없습니다.
+            선택 가능한 부모 이미지가 없습니다.
           </p>
         )}
       </div>
@@ -168,12 +170,12 @@ function NodeThumb({ node }: { node: NodeData }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={node.imageUrl}
-        alt={`v${node.versionNumber}`}
+        alt={getNodeSequenceLabel(node)}
         className="h-8 w-8 shrink-0 rounded object-cover"
       />
       <div className="flex min-w-0 flex-col">
         <span className="truncate text-xs">
-          v{node.versionNumber}
+          {getNodeSequenceLabel(node)}
           {node.parentNodeId ? '' : ' (루트)'}
         </span>
         <span

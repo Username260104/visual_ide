@@ -1,37 +1,64 @@
 'use client';
 
-import { useMemo, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
+import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
+import { ManualEventComposer } from '@/components/activity/ManualEventComposer';
+import { StrategyContextCard } from '@/components/context/StrategyContextCard';
 import { STATUS_COLORS, STATUS_LABELS } from '@/lib/constants';
+import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
+import {
+  getNodeDisplayPrompt,
+  getPromptSourceLabel,
+} from '@/lib/promptProvenance';
 import type { Direction, NodeData, NodeStatus } from '@/lib/types';
 import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
-import { useUIStore } from '@/stores/uiStore';
-import { StatusSelector } from './StatusSelector';
+import {
+  createSaveFeedbackKey,
+  type SaveFeedbackEntry,
+  useUIStore,
+} from '@/stores/uiStore';
+import { StatusSelector, requiresStatusReason } from './StatusSelector';
 import { VariationPanel } from './VariationPanel';
 
 const COPY = {
-  variation: '\uBCC0\uD615 \uB9CC\uB4E4\uAE30',
-  direction: 'Direction',
-  unclassified: '\uBBF8\uBD84\uB958',
-  lineage: '\uACC4\uBCF4',
-  root: '\uB8E8\uD2B8',
-  parent: '\uBD80\uBAA8',
-  depth: '\uAE4A\uC774',
-  step: '\uB2E8\uACC4',
-  intentTags: '\uC758\uB3C4 \uD0DC\uADF8',
-  changeTags: '\uBCC0\uACBD \uD0DC\uADF8',
-  notes: '\uBA54\uBAA8',
-  notePlaceholder: '\uBA54\uBAA8\uB97C \uC785\uB825\uD574 \uC8FC\uC138\uC694',
-  sourceInfo: '\uC0DD\uC131 \uC815\uBCF4',
-  source: '\uCD9C\uCC98',
-  generated: `AI \uC0DD\uC131`,
-  uploaded: '\uC5C5\uB85C\uB4DC',
-  model: '\uBAA8\uB378',
-  size: '\uD06C\uAE30',
-  ratio: '\uBE44\uC728',
-  prompt: '\uD504\uB86C\uD504\uD2B8',
-  seed: '\uC2DC\uB4DC',
-  created: '\uC0DD\uC131\uC77C',
+  variation: '변형 만들기',
+  direction: '방향',
+  unclassified: '미분류',
+  lineage: '계보',
+  root: '루트',
+  parent: '부모',
+  depth: '깊이',
+  step: '단계',
+  intentTags: '의도 태그',
+  changeTags: '변경 태그',
+  notes: '메모',
+  notePlaceholder: '메모를 입력해 주세요.',
+  sourceInfo: '생성 정보',
+  source: '출처',
+  generated: 'AI 생성',
+  uploaded: '업로드',
+  model: '모델',
+  size: '크기',
+  ratio: '비율',
+  prompt: '프롬프트',
+  userIntent: '사용자 의도',
+  resolvedPrompt: '정리된 프롬프트',
+  promptSource: '프롬프트 출처',
+  seed: '시드',
+  created: '생성일',
+  manualActivity: '수동 기록',
+  manualActivityEmpty: '이 이미지와 관련된 수동 기록이 아직 없습니다.',
+  directionStrategyTitle: '방향 전략',
+  directionStrategyEmpty:
+    '이 방향의 전략 정보가 아직 없습니다. Settings에서 입력해 주세요.',
 } as const;
 
 export function DetailPanel() {
@@ -40,20 +67,72 @@ export function DetailPanel() {
   const detailMode = useUIStore((state) => state.detailMode);
   const selectNode = useUIStore((state) => state.selectNode);
   const setDetailMode = useUIStore((state) => state.setDetailMode);
+  const clearSaveFeedback = useUIStore((state) => state.clearSaveFeedback);
+  const saveFeedbackByKey = useUIStore((state) => state.saveFeedbackByKey);
   const nodes = useNodeStore((state) => state.nodes);
+  const patchNode = useNodeStore((state) => state.patchNode);
   const updateNode = useNodeStore((state) => state.updateNode);
   const directions = useDirectionStore((state) => state.directions);
 
   const node = selectedNodeId ? nodes[selectedNodeId] : null;
+  const noteFeedbackKey = selectedNodeId
+    ? createSaveFeedbackKey('node', selectedNodeId, 'note')
+    : null;
+  const noteFeedback = useUIStore((state) =>
+    noteFeedbackKey ? state.saveFeedbackByKey[noteFeedbackKey] ?? null : null
+  );
   const parentNode = node?.parentNodeId ? nodes[node.parentNodeId] : null;
+  const nodeId = node?.id ?? null;
+  const savedNote = node?.note ?? '';
   const directionList = useMemo(() => Object.values(directions), [directions]);
   const currentDirection = node?.directionId ? directions[node.directionId] : null;
+  const directionStrategyItems = useMemo(
+    () =>
+      currentDirection
+        ? [
+            { label: '방향 가설', value: currentDirection.thesis },
+            { label: '적합 기준', value: currentDirection.fitCriteria },
+            { label: '피해야 할 느낌', value: currentDirection.antiGoal },
+            { label: '참고 메모', value: currentDirection.referenceNotes },
+          ]
+        : [],
+    [currentDirection]
+  );
+  const activityRefreshKey = useMemo(
+    () =>
+      Object.values(saveFeedbackByKey)
+        .map((entry) => `${entry.key}:${entry.status}:${entry.updatedAt}`)
+        .join('|'),
+    [saveFeedbackByKey]
+  );
+  const rootNode = useMemo(
+    () => (node ? getLineageRoot(node, nodes) : null),
+    [node, nodes]
+  );
   const lineageDepth = useMemo(
     () => (node ? getLineageDepth(node, nodes) : 0),
     [node, nodes]
   );
+  const [noteDraft, setNoteDraft] = useState('');
+  const [isNoteDirty, setIsNoteDirty] = useState(false);
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const noteDraftRef = useRef(noteDraft);
 
-  if (!isOpen || !node) return null;
+  useEffect(() => {
+    noteDraftRef.current = noteDraft;
+  }, [noteDraft]);
+
+  useEffect(() => {
+    setNoteDraft(savedNote);
+    setIsNoteDirty(false);
+    setIsSavingNote(false);
+  }, [nodeId, savedNote]);
+
+  if (!isOpen || !node) {
+    return null;
+  }
+
+  const noteMeta = getNoteMeta(noteFeedback, isNoteDirty);
 
   const handleBackToView = () => {
     setDetailMode('view');
@@ -65,21 +144,107 @@ export function DetailPanel() {
     }
   };
 
-  const handleStatusChange = (
-    status: NodeStatus,
-    statusReason: string | null
-  ) => {
-    updateNode(node.id, { status, statusReason });
+  const handleStatusChange = (status: NodeStatus) => {
+    void updateNode(
+      node.id,
+      {
+        status,
+        statusReason: requiresStatusReason(status) ? node.statusReason : null,
+      },
+      {
+        rollbackOnError: true,
+        feedback: {
+          action: 'status',
+          savingMessage: '상태 저장 중...',
+          successMessage: '상태가 저장되었습니다.',
+          errorMessage: '상태를 저장하지 못했습니다.',
+        },
+      }
+    );
+  };
+
+  const handleStatusReasonChange = (statusReason: string | null) => {
+    void updateNode(node.id, { statusReason });
   };
 
   const handleDirectionChange = (directionId: string | null) => {
-    updateNode(node.id, { directionId });
+    void updateNode(
+      node.id,
+      { directionId },
+      {
+        rollbackOnError: true,
+        feedback: {
+          action: 'direction',
+          savingMessage: '방향 저장 중...',
+          successMessage: '방향이 저장되었습니다.',
+          errorMessage: '방향을 저장하지 못했습니다.',
+        },
+      }
+    );
+  };
+
+  const persistNoteDraft = async () => {
+    if (isSavingNote) {
+      return;
+    }
+
+    const nextNote = noteDraftRef.current;
+
+    if (nextNote === node.note) {
+      setIsNoteDirty(false);
+
+      if (noteFeedback?.status === 'error') {
+        clearSaveFeedback(noteFeedback.key);
+      }
+
+      return;
+    }
+
+    setIsSavingNote(true);
+
+    try {
+      const savedNode = await patchNode(
+        node.id,
+        { note: nextNote },
+        {
+          feedback: {
+            action: 'note',
+            savingMessage: '메모 저장 중...',
+            successMessage: '메모가 저장되었습니다.',
+            errorMessage: '메모를 저장하지 못했습니다.',
+          },
+        }
+      );
+
+      setIsNoteDirty(noteDraftRef.current !== savedNode.note);
+    } catch (error) {
+      setIsNoteDirty(true);
+      console.error('Failed to save note:', error);
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const handleNoteChange = (nextNote: string) => {
+    setNoteDraft(nextNote);
+    setIsNoteDirty(nextNote !== node.note);
+
+    if (noteFeedback?.status === 'error') {
+      clearSaveFeedback(noteFeedback.key);
+    }
+  };
+
+  const handleNoteKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault();
+      void persistNoteDraft();
+    }
   };
 
   if (detailMode === 'variation') {
     return (
       <PanelContainer animated>
-        <NodePreview node={node} compact />
+        <NodePreview key={`${node.id}:${node.imageUrl}:compact`} node={node} compact />
         <VariationPanel node={node} onBack={handleBackToView} />
       </PanelContainer>
     );
@@ -87,7 +252,7 @@ export function DetailPanel() {
 
   return (
     <PanelContainer>
-      <NodePreview node={node} />
+      <NodePreview key={`${node.id}:${node.imageUrl}:full`} node={node} />
 
       <div className="flex flex-col gap-4 p-4">
         <button
@@ -117,7 +282,8 @@ export function DetailPanel() {
         <StatusSelector
           status={node.status}
           statusReason={node.statusReason}
-          onChange={handleStatusChange}
+          onStatusChange={handleStatusChange}
+          onStatusReasonChange={handleStatusReasonChange}
         />
 
         <DirectionSection
@@ -127,9 +293,18 @@ export function DetailPanel() {
           onChange={handleDirectionChange}
         />
 
+        {currentDirection && (
+          <StrategyContextCard
+            title={COPY.directionStrategyTitle}
+            items={directionStrategyItems}
+            emptyMessage={COPY.directionStrategyEmpty}
+          />
+        )}
+
         <LineageSection
           node={node}
           parentNode={parentNode}
+          rootNode={rootNode}
           lineageDepth={lineageDepth}
           onNavigateToParent={handleNavigateToParent}
         />
@@ -148,12 +323,12 @@ export function DetailPanel() {
 
         <PanelSection label={COPY.notes}>
           <textarea
-            value={node.note}
-            onChange={(event) =>
-              updateNode(node.id, { note: event.target.value })
-            }
+            value={noteDraft}
+            onChange={(event) => handleNoteChange(event.target.value)}
+            onBlur={() => void persistNoteDraft()}
+            onKeyDown={handleNoteKeyDown}
             placeholder={COPY.notePlaceholder}
-            rows={3}
+            rows={4}
             className="w-full resize-none rounded px-2.5 py-1.5 text-xs"
             style={{
               backgroundColor: 'var(--bg-input)',
@@ -161,7 +336,24 @@ export function DetailPanel() {
               border: '1px solid var(--border-default)',
             }}
           />
+          {noteMeta && (
+            <p className="mt-1 text-[10px]" style={{ color: noteMeta.color }}>
+              {noteMeta.message}
+            </p>
+          )}
         </PanelSection>
+
+        <ManualEventComposer node={node} nodes={nodes} />
+
+        <ActivityTimeline
+          projectId={node.projectId}
+          nodeId={node.id}
+          limit={10}
+          title={COPY.manualActivity}
+          emptyMessage={COPY.manualActivityEmpty}
+          refreshKey={activityRefreshKey}
+          compact
+        />
 
         <SourceInfoSection node={node} />
       </div>
@@ -198,18 +390,43 @@ function NodePreview({
   node: NodeData;
   compact?: boolean;
 }) {
+  const [hasImageError, setHasImageError] = useState(false);
+
   return (
     <div
-      className={`relative w-full overflow-hidden ${
+      className={`relative w-full shrink-0 overflow-hidden ${
         compact ? 'h-[120px]' : 'aspect-square'
       }`}
       style={{ backgroundColor: 'var(--bg-base)' }}
     >
+      {hasImageError && (
+        <div
+          className="absolute inset-0 flex items-center justify-center"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))',
+          }}
+        >
+          <div
+            className="rounded px-3 py-2 text-center text-[11px]"
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.36)',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            ???? ???? ?????.
+          </div>
+        </div>
+      )}
+
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={node.imageUrl}
-        alt={`v${node.versionNumber}`}
+        alt={getNodeSequenceLabel(node)}
         className="h-full w-full object-contain"
+        draggable={false}
+        onError={() => setHasImageError(true)}
+        style={{ opacity: hasImageError ? 0 : 1 }}
       />
 
       <div className="absolute left-3 top-3 flex items-center gap-2">
@@ -221,14 +438,16 @@ function NodePreview({
             backdropFilter: 'blur(4px)',
           }}
         >
-          v{node.versionNumber}
+          {getNodeSequenceLabel(node)}
         </span>
         <span
           className="rounded px-2 py-1 text-[11px] font-medium"
           style={{
             backgroundColor: STATUS_COLORS[node.status],
             color:
-              node.status === 'reviewing' ? 'var(--bg-base)' : 'var(--text-inverse)',
+              node.status === 'reviewing'
+                ? 'var(--bg-base)'
+                : 'var(--text-inverse)',
           }}
         >
           {STATUS_LABELS[node.status]}
@@ -277,10 +496,7 @@ function DirectionSection({
             className="h-2 w-2 rounded-full"
             style={{ backgroundColor: currentDirection.color }}
           />
-          <span
-            className="text-[10px]"
-            style={{ color: currentDirection.color }}
-          >
+          <span className="text-[10px]" style={{ color: currentDirection.color }}>
             {currentDirection.name}
           </span>
         </div>
@@ -292,22 +508,21 @@ function DirectionSection({
 function LineageSection({
   node,
   parentNode,
+  rootNode,
   lineageDepth,
   onNavigateToParent,
 }: {
   node: NodeData;
   parentNode: NodeData | null;
+  rootNode: NodeData | null;
   lineageDepth: number;
   onNavigateToParent: () => void;
 }) {
   return (
     <PanelSection label={COPY.lineage}>
-      <div
-        className="flex flex-col gap-1 text-xs"
-        style={{ color: 'var(--text-secondary)' }}
-      >
+      <div className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
         <div className="flex items-center gap-1">
-          <span>v{node.versionNumber}</span>
+          <span>{getNodeSequenceLabel(node)}</span>
           {!node.parentNodeId && (
             <span
               className="rounded px-1.5 py-0.5 text-[10px]"
@@ -321,6 +536,12 @@ function LineageSection({
           )}
         </div>
 
+        {rootNode && rootNode.id !== node.id && (
+          <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            {COPY.root} {getNodeSequenceLabel(rootNode)}
+          </div>
+        )}
+
         {parentNode && (
           <button
             className="flex items-center gap-1 text-left transition-opacity hover:opacity-80"
@@ -329,16 +550,13 @@ function LineageSection({
           >
             <span>&larr;</span>
             <span>
-              {COPY.parent} v{parentNode.versionNumber}
+              {COPY.parent} {getNodeSequenceLabel(parentNode)}
             </span>
           </button>
         )}
 
         {lineageDepth > 0 && (
-          <div
-            className="mt-0.5 text-[10px]"
-            style={{ color: 'var(--text-muted)' }}
-          >
+          <div className="mt-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
             {COPY.depth}: {lineageDepth}
             {COPY.step}
           </div>
@@ -388,10 +606,7 @@ function SourceInfoSection({ node }: { node: NodeData }) {
       <div className="flex flex-col gap-2 text-xs">
         {rows.map((row) => (
           <div key={row.label} className="flex gap-3">
-            <span
-              className="w-14 shrink-0"
-              style={{ color: 'var(--text-muted)' }}
-            >
+            <span className="w-20 shrink-0" style={{ color: 'var(--text-muted)' }}>
               {row.label}
             </span>
             <span
@@ -430,8 +645,25 @@ function buildSourceInfoRows(node: NodeData) {
     rows.push({ label: COPY.ratio, value: node.aspectRatio });
   }
 
-  if (node.prompt) {
-    rows.push({ label: COPY.prompt, value: node.prompt, wrap: true });
+  if (node.userIntent) {
+    rows.push({ label: COPY.userIntent, value: node.userIntent, wrap: true });
+  }
+
+  const displayPrompt = getNodeDisplayPrompt(node);
+  if (displayPrompt) {
+    rows.push({
+      label:
+        node.userIntent && node.userIntent !== displayPrompt
+          ? COPY.resolvedPrompt
+          : COPY.prompt,
+      value: displayPrompt,
+      wrap: true,
+    });
+  }
+
+  const promptSourceLabel = getPromptSourceLabel(node.promptSource);
+  if (promptSourceLabel) {
+    rows.push({ label: COPY.promptSource, value: promptSourceLabel });
   }
 
   if (node.seed !== null) {
@@ -482,4 +714,55 @@ function getLineageDepth(node: NodeData, nodes: Record<string, NodeData>) {
   }
 
   return depth;
+}
+
+function getLineageRoot(node: NodeData, nodes: Record<string, NodeData>) {
+  let current: NodeData | undefined = node;
+  const visited = new Set<string>();
+
+  while (current?.parentNodeId) {
+    if (visited.has(current.parentNodeId)) {
+      break;
+    }
+
+    visited.add(current.parentNodeId);
+    current = nodes[current.parentNodeId];
+  }
+
+  return current ?? node;
+}
+
+function getNoteMeta(
+  feedback: SaveFeedbackEntry | null,
+  isDirty: boolean
+): { message: string; color: string } | null {
+  if (feedback?.status === 'saving') {
+    return {
+      message: feedback.message,
+      color: 'var(--text-accent)',
+    };
+  }
+
+  if (feedback?.status === 'error') {
+    return {
+      message: feedback.message,
+      color: 'var(--status-dropped)',
+    };
+  }
+
+  if (isDirty) {
+    return {
+      message: '저장되지 않은 메모',
+      color: 'var(--text-secondary)',
+    };
+  }
+
+  if (feedback?.status === 'saved') {
+    return {
+      message: feedback.message,
+      color: 'var(--status-final)',
+    };
+  }
+
+  return null;
 }

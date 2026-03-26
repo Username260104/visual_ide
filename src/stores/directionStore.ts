@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { fetchJson, indexById } from '@/lib/clientApi';
 import { Direction } from '@/lib/types';
+import { useUIStore } from '@/stores/uiStore';
 
 interface DirectionStore {
   directions: Record<string, Direction>;
@@ -11,8 +12,8 @@ interface DirectionStore {
   clearDirections: () => void;
 
   addDirection: (name: string, color: string) => Promise<Direction>;
-  updateDirection: (id: string, updates: Partial<Direction>) => void;
-  deleteDirection: (id: string) => void;
+  updateDirection: (id: string, updates: Partial<Direction>) => Promise<Direction | null>;
+  deleteDirection: (id: string) => Promise<boolean>;
 }
 
 export const useDirectionStore = create<DirectionStore>((set, get) => ({
@@ -22,6 +23,7 @@ export const useDirectionStore = create<DirectionStore>((set, get) => ({
 
   loadDirections: async (projectId) => {
     set({ isLoading: true, projectId });
+
     try {
       const directions = await fetchJson<Direction[]>(
         `/api/projects/${projectId}/directions`
@@ -37,60 +39,125 @@ export const useDirectionStore = create<DirectionStore>((set, get) => ({
   clearDirections: () => set({ directions: {}, projectId: null }),
 
   addDirection: async (name, color) => {
-    const { projectId } = get();
-    if (!projectId) throw new Error('No project loaded');
+    const projectId = get().projectId;
+    if (!projectId) {
+      throw new Error('No project loaded');
+    }
 
     const direction = await fetchJson<Direction>(
       `/api/projects/${projectId}/directions`,
       {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, color }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, color }),
       }
     );
 
     set((state) => ({
       directions: { ...state.directions, [direction.id]: direction },
     }));
+
     return direction;
   },
 
-  updateDirection: (id, updates) => {
-    set((state) => {
-      const existing = state.directions[id];
-      if (!existing) return state;
-      return {
-        directions: { ...state.directions, [id]: { ...existing, ...updates } },
-      };
-    });
+  updateDirection: async (id, updates) => {
+    const existing = get().directions[id];
+    if (!existing) {
+      return null;
+    }
 
-    const { projectId } = get();
-    if (projectId) {
-      fetchJson<Direction>(`/api/projects/${projectId}/directions/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      })
-        .then((direction) => {
-          set((state) => ({
-            directions: { ...state.directions, [direction.id]: direction },
-          }));
-        })
-        .catch((err) => console.error('Failed to update direction:', err));
+    set((state) => ({
+      directions: {
+        ...state.directions,
+        [id]: { ...existing, ...updates },
+      },
+    }));
+
+    const projectId = get().projectId;
+    if (!projectId) {
+      set((state) => ({
+        directions: {
+          ...state.directions,
+          [id]: existing,
+        },
+      }));
+      return null;
+    }
+
+    try {
+      const direction = await fetchJson<Direction>(
+        `/api/projects/${projectId}/directions/${id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        }
+      );
+
+      set((state) => ({
+        directions: { ...state.directions, [direction.id]: direction },
+      }));
+
+      return direction;
+    } catch (error) {
+      set((state) => ({
+        directions: {
+          ...state.directions,
+          [id]: existing,
+        },
+      }));
+      console.error('Failed to update direction:', error);
+      return null;
     }
   },
 
-  deleteDirection: (id) => {
-    set((state) => {
-      const { [id]: _removed, ...rest } = state.directions;
-      return { directions: rest };
+  deleteDirection: async (id) => {
+    const existing = get().directions[id];
+    if (!existing) {
+      return false;
+    }
+
+    const feedbackKey = useUIStore.getState().startSaveFeedback({
+      entityType: 'direction',
+      entityId: id,
+      action: 'delete',
+      message: '방향 삭제 중...',
     });
 
-    const { projectId } = get();
-    if (projectId) {
-      fetchJson<{ ok: boolean }>(`/api/projects/${projectId}/directions/${id}`, {
+    const projectId = get().projectId;
+    if (!projectId) {
+      useUIStore
+        .getState()
+        .markSaveFeedbackError(feedbackKey, '프로젝트가 로드되지 않았습니다');
+      return false;
+    }
+
+    try {
+      await fetchJson<{ ok: boolean }>(`/api/projects/${projectId}/directions/${id}`, {
         method: 'DELETE',
-      }).catch((err) => console.error('Failed to delete direction:', err));
+      });
+
+      set((state) => {
+        const { [id]: _removed, ...rest } = state.directions;
+        return { directions: rest };
+      });
+
+      useUIStore.getState().markSaveFeedbackSuccess(feedbackKey, '방향이 삭제되었습니다');
+      return true;
+    } catch (error) {
+      useUIStore
+        .getState()
+        .markSaveFeedbackError(feedbackKey, getDeleteErrorMessage(error));
+      console.error('Failed to delete direction:', error);
+      return false;
     }
   },
 }));
+
+function getDeleteErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return '방향을 삭제하지 못했습니다';
+}

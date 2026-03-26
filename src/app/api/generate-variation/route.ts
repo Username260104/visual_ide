@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Replicate from 'replicate';
 import {
   buildGenerationInput,
   persistGeneratedImages,
   runReplicateGeneration,
 } from '@/lib/imageGeneration';
 import { buildVariationPrompt } from '@/lib/promptGeneration';
-
-const replicate = new Replicate();
+import {
+  createReplicateClient,
+  getReplicateErrorMessage,
+} from '@/lib/replicate';
 
 export async function POST(request: NextRequest) {
   try {
+    const replicate = createReplicateClient();
     const {
       parentPrompt,
       intentTags,
@@ -31,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newPrompt = await buildVariationPrompt({
+    const resolvedPrompt = await buildVariationPrompt({
       parentPrompt,
       intentTags,
       changeTags,
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
     });
 
     const input = buildGenerationInput({
-      prompt: newPrompt,
+      prompt: resolvedPrompt,
       aspectRatio,
       customWidth,
       customHeight,
@@ -59,11 +61,10 @@ export async function POST(request: NextRequest) {
 
     const imageUrls = await persistGeneratedImages(projectId, allResults);
 
-    return NextResponse.json({ imageUrls, prompt: newPrompt });
+    return NextResponse.json({ imageUrls, resolvedPrompt });
   } catch (error) {
     console.error('Variation generation error:', error);
-    const message =
-      error instanceof Error ? error.message : 'Failed to generate variation';
+    const message = getReplicateErrorMessage(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

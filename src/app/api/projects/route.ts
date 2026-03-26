@@ -1,18 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { mapProjectWithActiveCounts } from '@/lib/activeRecords';
 import { prisma } from '@/lib/prisma';
-import { mapPrismaProjectToProject } from '@/lib/mappers';
 
-// GET /api/projects — list all projects
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const scope = request.nextUrl.searchParams.get('scope') ?? 'active';
+  const archivedAtFilter: null | { not: null } | undefined =
+    scope === 'archived'
+      ? { not: null }
+      : scope === 'all'
+        ? undefined
+        : null;
+
   const projects = await prisma.project.findMany({
+    where:
+      archivedAtFilter === undefined
+        ? undefined
+        : { archivedAt: archivedAtFilter },
     orderBy: { updatedAt: 'desc' },
-    include: { _count: { select: { nodes: true, directions: true } } },
   });
 
-  return NextResponse.json(projects.map(mapPrismaProjectToProject));
+  const serializedProjects = await Promise.all(
+    projects.map((project) => mapProjectWithActiveCounts(project))
+  );
+
+  return NextResponse.json(serializedProjects);
 }
 
-// POST /api/projects — create a new project
 export async function POST(request: NextRequest) {
   const { name, description } = await request.json();
 
@@ -21,9 +34,11 @@ export async function POST(request: NextRequest) {
   }
 
   const project = await prisma.project.create({
-    data: { name, description: description ?? '' },
-    include: { _count: { select: { nodes: true, directions: true } } },
+    data: {
+      name,
+      description: description ?? '',
+    },
   });
 
-  return NextResponse.json(mapPrismaProjectToProject(project));
+  return NextResponse.json(await mapProjectWithActiveCounts(project));
 }

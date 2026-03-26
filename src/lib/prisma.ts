@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/generated/prisma/client';
+﻿import { PrismaClient } from '@/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const globalForPrisma = globalThis as unknown as {
@@ -10,7 +10,15 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+function hasActivityEventDelegate(
+  client: InstanceType<typeof PrismaClient> | undefined
+): client is InstanceType<typeof PrismaClient> {
+  return Boolean(client && 'activityEvent' in client);
+}
+
+export const prisma = hasActivityEventDelegate(globalForPrisma.prisma)
+  ? globalForPrisma.prisma
+  : createPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;

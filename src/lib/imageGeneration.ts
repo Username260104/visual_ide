@@ -1,6 +1,11 @@
 import type Replicate from 'replicate';
 import { MODELS, MODEL_MAP, type ModelDef } from '@/lib/constants';
-import { uploadImageFromStream, uploadImageFromUrl } from '@/lib/storage';
+import {
+  deleteImages,
+  type StorageUploadResult,
+  uploadImageAssetFromStream,
+  uploadImageAssetFromUrl,
+} from '@/lib/storage';
 
 export interface BuildGenerationInputOptions {
   prompt: string;
@@ -171,19 +176,63 @@ export async function persistGeneratedImages(
   projectId: string,
   outputs: ReplicateOutput[]
 ): Promise<string[]> {
-  return Promise.all(
-    outputs.map(async (output) => {
-      if (output instanceof ReadableStream) {
-        return uploadImageFromStream(projectId, output);
-      }
-
-      if (typeof output === 'string') {
-        return uploadImageFromUrl(projectId, output);
-      }
-
-      throw new Error('Unexpected output format');
-    })
+  const settledUploads = await Promise.allSettled(
+    outputs.map((output) => persistSingleGeneratedImage(projectId, output))
   );
+
+  const successfulUploads = settledUploads.flatMap((result) =>
+    result.status === 'fulfilled' ? [result.value] : []
+  );
+  const failedUpload = settledUploads.find(
+    (result): result is PromiseRejectedResult => result.status === 'rejected'
+  );
+
+  if (failedUpload) {
+    await rollbackGeneratedUploads(successfulUploads);
+    throw new Error(getUploadFailureMessage(failedUpload.reason));
+  }
+
+  return successfulUploads.map((upload) => upload.publicUrl);
+}
+
+async function persistSingleGeneratedImage(
+  projectId: string,
+  output: ReplicateOutput
+): Promise<StorageUploadResult> {
+  if (output instanceof ReadableStream) {
+    return uploadImageAssetFromStream(projectId, output);
+  }
+
+  if (typeof output === 'string') {
+    return uploadImageAssetFromUrl(projectId, output);
+  }
+
+  throw new Error('Unexpected output format');
+}
+
+async function rollbackGeneratedUploads(
+  uploads: StorageUploadResult[]
+): Promise<void> {
+  if (uploads.length === 0) {
+    return;
+  }
+
+  try {
+    await deleteImages(uploads.map((upload) => upload.path));
+  } catch (cleanupError) {
+    console.error('Failed to rollback generated image uploads:', cleanupError);
+    throw new Error(
+      'Generated image persistence failed and uploaded files could not be cleaned up automatically.'
+    );
+  }
+}
+
+function getUploadFailureMessage(reason: unknown) {
+  if (reason instanceof Error && reason.message.trim()) {
+    return `Failed to persist generated images: ${reason.message}`;
+  }
+
+  return 'Failed to persist generated images.';
 }
 
 function normalizeReplicateOutput(output: unknown): ReplicateOutput[] {

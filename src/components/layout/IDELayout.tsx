@@ -1,23 +1,24 @@
-'use client';
+﻿'use client';
 
 import { ActivityBar } from './ActivityBar';
 import { Sidebar } from './Sidebar';
 import { StatusBar } from './StatusBar';
 import { DetailPanel } from '@/components/detail/DetailPanel';
+import { StagingNavigationGuard } from '@/components/staging/StagingNavigationGuard';
+import { StagingTray } from '@/components/staging/StagingTray';
 import { GenerateDialog } from './GenerateDialog';
 
 export function IDELayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden">
-      {/* Main area */}
-      <div className="flex flex-1 min-h-0">
+    <div className="flex h-screen w-screen flex-col overflow-hidden">
+      <StagingNavigationGuard />
+      <div className="flex min-h-0 flex-1">
         <ActivityBar />
         <Sidebar />
-        {/* Center: graph canvas */}
-        <div className="flex-1 min-w-0 relative">{children}</div>
-        {/* Right: detail panel */}
+        <div className="relative min-w-0 flex-1">{children}</div>
         <DetailPanel />
       </div>
+      <StagingTray />
       <StatusBar />
       <GenerateDialog />
     </div>

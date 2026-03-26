@@ -13,11 +13,14 @@ import ReactFlow, {
   type NodeTypes,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { DestructiveActionDialog } from '@/components/ui/DestructiveActionDialog';
+import { useImageDrop } from '@/hooks/useImageDrop';
+import { collectDescendantIds } from '@/lib/nodeTree';
+import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
 import type { NodeData } from '@/lib/types';
 import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
 import { useUIStore } from '@/stores/uiStore';
-import { useImageDrop } from '@/hooks/useImageDrop';
 import { DropOverlay } from './DropOverlay';
 import { ImageNode } from './ImageNode';
 import { NodeContextMenu, type NodeContextMenuAction } from './NodeContextMenu';
@@ -47,7 +50,13 @@ function NodeGraphInner() {
     position: { x: number; y: number };
   } | null>(null);
   const [reparentNodeId, setReparentNodeId] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeletingNode, setIsDeletingNode] = useState(false);
   const contextMenuNode = contextMenu ? nodesById[contextMenu.nodeId] : null;
+  const deleteTargetNode = deleteTargetId ? nodesById[deleteTargetId] : null;
+  const deleteTargetLabel = deleteTargetNode
+    ? getNodeSequenceLabel(deleteTargetNode)
+    : '';
 
   useEffect(() => {
     setRfNodes((current) => syncFlowNodes(current, nodeList, selectedNodeId));
@@ -76,7 +85,12 @@ function NodeGraphInner() {
     if (reparentNodeId && !nodesById[reparentNodeId]) {
       setReparentNodeId(null);
     }
-  }, [contextMenu, nodesById, reparentNodeId]);
+
+    if (deleteTargetId && !nodesById[deleteTargetId]) {
+      setDeleteTargetId(null);
+      setIsDeletingNode(false);
+    }
+  }, [contextMenu, deleteTargetId, nodesById, reparentNodeId]);
 
   const rfEdges: Edge[] = useMemo(
     () =>
@@ -132,13 +146,14 @@ function NodeGraphInner() {
   const handleNodeDragStart: NodeDragHandler = useCallback(
     (_event, node) => {
       setContextMenu(null);
+      selectNode(node.id);
       setRfNodes((current) =>
         current.map((item) =>
           item.id === node.id ? { ...item, zIndex: 30 } : item
         )
       );
     },
-    []
+    [selectNode]
   );
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
@@ -158,10 +173,62 @@ function NodeGraphInner() {
             : item
         )
       );
-      updateNode(node.id, { position: node.position });
+
+      void updateNode(
+        node.id,
+        { position: node.position },
+        {
+          rollbackOnError: true,
+          feedback: {
+            action: 'position',
+            savingMessage: '위치 저장 중...',
+            successMessage: '위치가 저장되었습니다',
+            errorMessage: '위치를 저장하지 못했습니다.',
+          },
+        }
+      );
     },
     [selectedNodeId, updateNode]
   );
+
+  const handleDeleteNode = useCallback(
+    async (nodeId: string) => {
+      if (isDeletingNode) {
+        return;
+      }
+
+      setIsDeletingNode(true);
+
+      try {
+        const deleted = await deleteNode(nodeId);
+        if (deleted) {
+          if (selectedNodeId === nodeId) {
+            selectNode(null);
+          }
+          setDeleteTargetId(null);
+        }
+      } finally {
+        setIsDeletingNode(false);
+      }
+    },
+    [deleteNode, isDeletingNode, selectNode, selectedNodeId]
+  );
+
+  const deleteImpact = useMemo(() => {
+    if (!deleteTargetNode) {
+      return null;
+    }
+
+    const directChildrenCount = nodeList.filter(
+      (node) => node.parentNodeId === deleteTargetNode.id
+    ).length;
+    const descendantCount = collectDescendantIds(nodeList, deleteTargetNode.id).size;
+
+    return {
+      directChildrenCount,
+      descendantCount,
+    };
+  }, [deleteTargetNode, nodeList]);
 
   const contextMenuActions = useMemo<NodeContextMenuAction[]>(() => {
     if (!contextMenuNode) {
@@ -207,23 +274,11 @@ function NodeGraphInner() {
         label: '삭제',
         tone: 'danger',
         onSelect: () => {
-          if (!window.confirm('이 노드를 삭제할까요?')) {
-            return;
-          }
-          if (selectedNodeId === contextMenuNode.id) {
-            selectNode(null);
-          }
-          deleteNode(contextMenuNode.id);
+          setDeleteTargetId(contextMenuNode.id);
         },
       },
     ];
-  }, [
-    contextMenuNode,
-    deleteNode,
-    selectNode,
-    selectedNodeId,
-    setDetailMode,
-  ]);
+  }, [contextMenuNode, selectNode, setDetailMode]);
 
   return (
     <div
@@ -258,6 +313,7 @@ function NodeGraphInner() {
         nodeId={reparentNodeId}
         onClose={() => setReparentNodeId(null)}
       />
+
       {contextMenu && contextMenuNode && (
         <NodeContextMenu
           position={contextMenu.position}
@@ -265,6 +321,47 @@ function NodeGraphInner() {
           onClose={() => setContextMenu(null)}
         />
       )}
+
+      <DestructiveActionDialog
+        isOpen={Boolean(deleteTargetNode && deleteImpact)}
+        title="이미지를 보관할까요?"
+        description={
+          deleteTargetNode
+            ? `${deleteTargetLabel} 이미지를 보관합니다.`
+            : ''
+        }
+        confirmLabel="이미지 보관"
+        impacts={
+          deleteTargetNode && deleteImpact
+            ? [
+                `직계 자식 ${deleteImpact.directChildrenCount}개`,
+                `전체 후손 ${deleteImpact.descendantCount}개`,
+                deleteTargetNode.directionId
+                  ? '현재 direction 연결 정보가 함께 해제됩니다.'
+                  : '미분류 이미지입니다.',
+              ]
+            : []
+        }
+        consequences={
+          deleteTargetNode && deleteImpact
+            ? [
+                deleteImpact.directChildrenCount > 0
+                  ? '직계 자식 이미지는 루트 이미지로 승격됩니다.'
+                  : '연결 구조 변화는 없습니다.',
+                '이 이미지의 메모, 상태, 프롬프트 기록은 보관함으로 이동합니다.',
+              ]
+            : []
+        }
+        isSubmitting={isDeletingNode}
+        onClose={() => {
+          if (!isDeletingNode) {
+            setDeleteTargetId(null);
+          }
+        }}
+        onConfirm={() =>
+          deleteTargetNode ? handleDeleteNode(deleteTargetNode.id) : undefined
+        }
+      />
 
       {nodeCount === 0 && !isDragging && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -282,9 +379,9 @@ function NodeGraphInner() {
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
-            <p className="text-sm">이미지를 드래그해서 시작해 보세요.</p>
+            <p className="text-sm">이미지를 드래그해 작업을 시작해 보세요.</p>
             <p className="mt-1.5 text-[11px] opacity-60">
-              또는 사이드바에서 AI 생성으로 첫 이미지를 만들어도 됩니다.
+              또는 사이드바에서 AI 생성으로 첫 이미지를 만들 수 있습니다.
             </p>
           </div>
         </div>

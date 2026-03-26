@@ -1,16 +1,25 @@
-'use client';
+﻿'use client';
 
 import { useMemo, useState } from 'react';
+import {
+  StrategyContextCard,
+  type StrategyContextItem,
+} from '@/components/context/StrategyContextCard';
+import { StagingBatchPreview } from '@/components/staging/StagingBatchPreview';
+import { useProjectStrategy } from '@/hooks/useProjectStrategy';
 import { MODELS } from '@/lib/constants';
 import { fetchJson } from '@/lib/clientApi';
+import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
+import { buildVariationUserIntent, getNodeDisplayPrompt } from '@/lib/promptProvenance';
 import {
   getGenerationAspectRatios,
   getModelDefinition,
   getSelectableOutputCounts,
 } from '@/lib/imageGeneration';
-import { NODE_CHILD_OFFSET_Y, NODE_COLUMN_GAP } from '@/lib/nodeLayout';
 import type { NodeData } from '@/lib/types';
+import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
+import { useStagingStore } from '@/stores/stagingStore';
 
 interface VariationPanelProps {
   node: NodeData;
@@ -20,68 +29,57 @@ interface VariationPanelProps {
 const DEFAULT_MODEL_ID = MODELS[0]?.id ?? 'flux-schnell';
 
 const COPY = {
-  back: '\uC0C1\uC138 \uBCF4\uAE30\uB85C \uB3CC\uC544\uAC00\uAE30',
-  title: '\uBCC0\uD615 \uB9CC\uB4E4\uAE30',
-  parentVersion: '\uBD80\uBAA8 \uBC84\uC804',
-  prompt: '\uD504\uB86C\uD504\uD2B8',
-  intent: '\uC758\uB3C4',
-  intentDescription:
-    '\uC5B4\uB5A4 \uBC29\uD5A5\uC73C\uB85C \uBC14\uAFB8\uACE0 \uC2F6\uC740\uC9C0 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.',
-  change: '\uBCC0\uACBD \uC694\uC18C',
-  changeDescription:
-    '\uBB34\uC5C7\uC744 \uC218\uC815\uD560\uC9C0 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.',
-  note: '\uCD94\uAC00 \uBA54\uBAA8',
-  notePlaceholder:
-    '\uC6D0\uD558\uB294 \uBCC0\uD654\uAC00 \uC788\uB2E4\uBA74 \uAD6C\uCCB4\uC801\uC73C\uB85C \uC801\uC5B4 \uC8FC\uC138\uC694.',
-  model: '\uBAA8\uB378',
-  ratio: '\uBE44\uC728',
-  outputCount: '\uC0DD\uC131 \uC218\uB7C9',
-  requireInput:
-    '\uC758\uB3C4 \uD0DC\uADF8, \uBCC0\uACBD \uD0DC\uADF8, \uBA54\uBAA8 \uC911 \uD558\uB098 \uC774\uC0C1\uC744 \uC785\uB825\uD574 \uC8FC\uC138\uC694.',
-  selectProject:
-    '\uD504\uB85C\uC81D\uD2B8\uB97C \uBA3C\uC800 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.',
-  generating:
-    '\uBCC0\uD615 \uC774\uBBF8\uC9C0\uB97C \uC0DD\uC131\uD558\uB294 \uC911\uC785\uB2C8\uB2E4...',
-  generationError:
-    '\uBCC0\uD615 \uC0DD\uC131 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694.',
-  generatingShort: '\uC0DD\uC131 \uC911...',
-  parentRoot: ' (\uB8E8\uD2B8)',
+  back: '상세 보기로 돌아가기',
+  title: '변형 만들기',
+  parentVersion: '부모 버전',
+  prompt: '프롬프트',
+  intent: '의도',
+  intentDescription: '어떤 방향으로 바꾸고 싶은지 선택해 주세요.',
+  change: '변경 요소',
+  changeDescription: '무엇을 수정할지 선택해 주세요.',
+  note: '추가 메모',
+  notePlaceholder: '원하는 변화가 있다면 구체적으로 적어 주세요.',
+  model: '모델',
+  ratio: '비율',
+  outputCount: '생성 수량',
+  requireInput: '의도 태그, 변경 태그, 메모 중 하나 이상을 입력해 주세요.',
+  selectProject: '프로젝트를 먼저 선택해 주세요.',
+  generating: '변형 이미지를 생성하는 중입니다...',
+  generationError: '변형 생성 중 오류가 발생했습니다. 다시 시도해 주세요.',
+  generatingShort: '생성 중...',
+  parentRoot: ' (루트)',
 } as const;
 
 const INTENT_OPTIONS = [
-  '\uD1A4 \uC870\uC815',
-  '\uAD6C\uB3C4 \uC815\uB9AC',
-  '\uBD84\uC704\uAE30 \uBCC0\uACBD',
-  '\uB514\uD14C\uC77C \uCD94\uAC00',
-  '\uC2A4\uD0C0\uC77C \uBCC0\uACBD',
-  '\uC694\uC18C \uC81C\uAC70',
-  '\uC694\uC18C \uCD94\uAC00',
-  '\uBE44\uC728 \uC870\uC815',
+  '톤 조정',
+  '구도 정리',
+  '분위기 변경',
+  '디테일 추가',
+  '스타일 변경',
+  '요소 제거',
+  '요소 추가',
+  '비율 조정',
 ] as const;
 
 const CHANGE_OPTIONS = [
-  '\uBC30\uACBD',
-  '\uC870\uBA85',
-  '\uC0C9\uC0C1',
-  '\uC778\uBB3C',
-  '\uC624\uBE0C\uC81D\uD2B8',
-  '\uD14D\uC2A4\uCC98',
-  '\uD0C0\uC774\uD3EC',
-  '\uB808\uC774\uC544\uC6C3',
+  '배경',
+  '조명',
+  '색상',
+  '인물',
+  '오브젝트',
+  '텍스처',
+  '타이포',
+  '레이아웃',
 ] as const;
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
-  'flux-schnell': '\uBE60\uB978 \uC0DD\uC131, \uCD08\uC548 \uD0D0\uC0C9\uC6A9',
-  'flux-dev': '\uADE0\uD615\uAC10 \uC788\uB294 \uACE0\uD488\uC9C8 \uBAA8\uB378',
-  'flux-1.1-pro':
-    '\uACE0\uD488\uC9C8 \uACB0\uACFC, \uCEE4\uC2A4\uD140 \uD574\uC0C1\uB3C4 \uC9C0\uC6D0',
-  'flux-2-pro':
-    '\uCD5C\uC2E0 \uC0C1\uC704 \uBAA8\uB378, \uCD5C\uB300 2048px',
-  'seedream-4.5': 'ByteDance \uACC4\uC5F4, 4K \uB300\uC751',
-  'ideogram-v3-turbo':
-    '\uD14D\uC2A4\uD2B8\uC640 \uD0C0\uC774\uD3EC \uD45C\uD604\uC5D0 \uAC15\uC810',
-  'recraft-v4':
-    '\uBE0C\uB79C\uB529\uACFC \uADF8\uB798\uD53D \uC2A4\uD0C0\uC77C\uC5D0 \uAC15\uC810',
+  'flux-schnell': '빠른 생성, 초안 탐색용',
+  'flux-dev': '균형 잡힌 고품질 모델',
+  'flux-1.1-pro': '고품질 결과, 커스텀 해상도 지원',
+  'flux-2-pro': '최신 상위 모델, 최대 2048px',
+  'seedream-4.5': 'ByteDance 계열, 4K 지원',
+  'ideogram-v3-turbo': '텍스트와 타이포 표현에 강점',
+  'recraft-v4': '브랜딩과 그래픽 스타일에 강점',
 };
 
 export function VariationPanel({ node, onBack }: VariationPanelProps) {
@@ -94,9 +92,19 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
   const [status, setStatus] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const addNode = useNodeStore((state) => state.addNode);
   const projectId = useNodeStore((state) => state.projectId);
+  const stagingBatches = useStagingStore((state) => state.batches);
+  const stageBatch = useStagingStore((state) => state.stageBatch);
+  const direction = useDirectionStore((state) =>
+    node.directionId ? state.directions[node.directionId] ?? null : null
+  );
+  const {
+    project,
+    isLoading: isProjectStrategyLoading,
+    error: projectStrategyError,
+  } = useProjectStrategy(projectId);
   const model = getModelDefinition(modelId);
+  const parentPrompt = getNodeDisplayPrompt(node);
 
   const availableRatios = useMemo(
     () => getGenerationAspectRatios(model),
@@ -105,6 +113,36 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
   const outputOptions = useMemo(
     () => getSelectableOutputCounts(model),
     [model]
+  );
+  const latestVariationBatch = useMemo(
+    () =>
+      projectId
+        ? stagingBatches.find(
+            (batch) =>
+              batch.projectId === projectId &&
+              batch.sourceKind === 'variation-panel' &&
+              batch.parentNodeId === node.id
+          ) ?? null
+        : null,
+    [node.id, projectId, stagingBatches]
+  );
+  const directionContextItems = useMemo<StrategyContextItem[]>(
+    () => [
+      { label: '방향 가설', value: direction?.thesis },
+      { label: '적합 기준', value: direction?.fitCriteria },
+      { label: '피해야 할 느낌', value: direction?.antiGoal },
+      { label: '참고 메모', value: direction?.referenceNotes },
+    ],
+    [direction]
+  );
+  const projectContextItems = useMemo<StrategyContextItem[]>(
+    () => [
+      { label: '프로젝트 브리프', value: project?.brief },
+      { label: '브랜드 톤', value: project?.brandTone },
+      { label: '타깃 오디언스', value: project?.targetAudience },
+      { label: '제약 조건', value: project?.constraints },
+    ],
+    [project]
   );
 
   const toggleTag = (
@@ -134,7 +172,9 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
   };
 
   const handleGenerate = async () => {
-    if (isGenerating) return;
+    if (isGenerating) {
+      return;
+    }
 
     if (intentTags.length === 0 && changeTags.length === 0 && !note.trim()) {
       setStatus(COPY.requireInput);
@@ -150,14 +190,14 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
     setStatus(COPY.generating);
 
     try {
-      const { imageUrls, prompt } = await fetchJson<{
+      const { imageUrls, resolvedPrompt } = await fetchJson<{
         imageUrls: string[];
-        prompt: string;
+        resolvedPrompt: string;
       }>('/api/generate-variation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          parentPrompt: node.prompt,
+          parentPrompt,
           intentTags,
           changeTags,
           note: note.trim(),
@@ -168,38 +208,34 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
         }),
       });
 
-      const existingChildCount = useNodeStore
-        .getState()
-        .getChildren(node.id).length;
+      const userIntent = buildVariationUserIntent({
+        intentTags,
+        changeTags,
+        note,
+      });
 
-      await Promise.all(
-        imageUrls.map((imageUrl, index) =>
-          addNode({
-            imageUrl,
-            source: 'ai-generated',
-            prompt,
-            modelUsed: model.name,
-            aspectRatio,
-            parentNodeId: node.id,
-            directionId: node.directionId,
-            intentTags: [...intentTags],
-            changeTags: [...changeTags],
-            note: note.trim(),
-            position: {
-              x: node.position.x + (existingChildCount + index) * NODE_COLUMN_GAP,
-              y: node.position.y + NODE_CHILD_OFFSET_Y,
-            },
-          })
-        )
-      );
+      stageBatch({
+        sourceKind: 'variation-panel',
+        projectId,
+        parentNodeId: node.id,
+        directionId: node.directionId,
+        userIntent,
+        resolvedPrompt,
+        promptSource: 'variation-derived',
+        modelId: model.id,
+        modelLabel: model.name,
+        aspectRatio,
+        width: null,
+        height: null,
+        intentTags,
+        changeTags,
+        note: note.trim(),
+        imageUrls,
+      });
 
       setStatus(
-        `${imageUrls.length}\uAC1C\uC758 \uBCC0\uD615\uC744 \uC0DD\uC131\uD588\uC2B5\uB2C8\uB2E4.`
+        `${imageUrls.length}개의 변형을 staging에 올렸습니다. 아직 자식 노드는 생성되지 않았습니다.`
       );
-
-      window.setTimeout(() => {
-        onBack();
-      }, 600);
     } catch (error) {
       console.error('Variation error:', error);
       setStatus(error instanceof Error ? error.message : COPY.generationError);
@@ -233,13 +269,32 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
           color: 'var(--text-muted)',
         }}
       >
-        {COPY.parentVersion} v{node.versionNumber}
-        {node.prompt && (
-          <span className="mt-0.5 block truncate">
-            {COPY.prompt}: {node.prompt}
+        {COPY.parentVersion} {getNodeSequenceLabel(node)}
+        {!node.parentNodeId && COPY.parentRoot}
+        {parentPrompt && (
+          <span className="mt-0.5 block line-clamp-2">
+            {COPY.prompt}: {parentPrompt}
           </span>
         )}
       </div>
+
+      <StrategyContextCard
+        title={direction ? `${direction.name} 방향 전략` : '방향 전략'}
+        items={directionContextItems}
+        emptyMessage={
+          direction
+            ? '이 방향에 아직 전략 메모가 없습니다. Settings에서 방향 가설과 적합 기준을 입력할 수 있습니다.'
+            : '이 노드는 아직 direction에 연결되지 않았습니다. direction을 지정하면 방향 전략을 함께 볼 수 있습니다.'
+        }
+      />
+
+      <StrategyContextCard
+        title="프로젝트 컨텍스트"
+        items={projectContextItems}
+        isLoading={Boolean(projectId) && isProjectStrategyLoading}
+        error={projectStrategyError}
+        emptyMessage="아직 프로젝트 전략이 비어 있습니다. Settings에서 브리프와 제약 조건을 입력하면 변형 과정에서 함께 참고할 수 있습니다."
+      />
 
       <TagSection
         label={COPY.intent}
@@ -379,6 +434,13 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
         </div>
       )}
 
+      {latestVariationBatch && (
+        <StagingBatchPreview
+          batch={latestVariationBatch}
+          title="이 노드의 최근 staging"
+        />
+      )}
+
       {isGenerating && (
         <div
           className="h-1 w-full overflow-hidden rounded-full"
@@ -403,9 +465,7 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
         onClick={handleGenerate}
         disabled={isGenerating}
       >
-        {isGenerating
-          ? COPY.generatingShort
-          : `\uBCC0\uD615 ${numOutputs}\uAC1C \uC0DD\uC131`}
+        {isGenerating ? COPY.generatingShort : `변형 ${numOutputs}개 생성`}
       </button>
     </div>
   );
@@ -471,5 +531,9 @@ function TagSection({
 }
 
 function getModelDescription(modelId: string) {
-  return MODEL_DESCRIPTIONS[modelId] ?? '\uAE30\uBCF8 \uBAA8\uB378';
+  return MODEL_DESCRIPTIONS[modelId] ?? '기본 모델';
 }
+
+
+
+

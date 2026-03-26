@@ -8,48 +8,66 @@ datasource db {
 }
 
 model Project {
-  id          String   @id @default(cuid())
-  name        String
-  description String   @default("")
-  thumbnailUrl String? @map("thumbnail_url")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String    @id @default(cuid())
+  name         String
+  description  String    @default("")
+  brief        String    @default("")
+  constraints  String    @default("") @map("constraints_text")
+  targetAudience String  @default("") @map("target_audience")
+  brandTone    String    @default("") @map("brand_tone")
+  thumbnailUrl String?   @map("thumbnail_url")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  archivedAt   DateTime? @map("archived_at")
 
   nodes      Node[]
   directions Direction[]
+  events     ActivityEvent[]
 
+  @@index([archivedAt])
   @@map("projects")
 }
 
 model Direction {
-  id        String   @id @default(cuid())
-  projectId String   @map("project_id")
-  name      String
-  color     String
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String    @id @default(cuid())
+  projectId  String    @map("project_id")
+  name       String
+  color      String
+  thesis     String    @default("")
+  fitCriteria String   @default("") @map("fit_criteria")
+  antiGoal   String    @default("") @map("anti_goal")
+  referenceNotes String @default("") @map("reference_notes")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  archivedAt DateTime? @map("archived_at")
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   nodes   Node[]
+  events  ActivityEvent[]
 
   @@index([projectId])
+  @@index([projectId, archivedAt])
   @@map("directions")
 }
 
 model Node {
-  id        String   @id @default(cuid())
-  projectId String   @map("project_id")
-  imageUrl  String   @map("image_url")
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String    @id @default(cuid())
+  projectId  String    @map("project_id")
+  imageUrl   String    @map("image_url")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  archivedAt DateTime? @map("archived_at")
 
   // Lineage
   parentNodeId String? @map("parent_node_id")
   directionId  String? @map("direction_id")
 
   // Source
-  source      String  @default("imported") // 'ai-generated' | 'imported'
-  prompt      String?
-  seed        Int?
-  modelUsed   String? @map("model_used")
+  source         String  @default("imported") // 'ai-generated' | 'imported'
+  prompt         String?
+  userIntent     String? @map("user_intent")
+  resolvedPrompt String? @map("resolved_prompt")
+  promptSource   String? @map("prompt_source")
+  seed           Int?
+  modelUsed      String? @map("model_used")
 
   // Image dimensions
   width       Int?
@@ -66,6 +84,7 @@ model Node {
   statusReason String? @map("status_reason")
 
   // Auto
+  nodeOrdinal   Int  @map("node_ordinal")
   versionNumber Int @default(1) @map("version_number")
 
   // Canvas position
@@ -73,13 +92,43 @@ model Node {
   positionY Float @default(0) @map("position_y")
 
   // Relations
-  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  direction  Direction? @relation(fields: [directionId], references: [id], onDelete: SetNull)
-  parentNode Node?      @relation("NodeTree", fields: [parentNodeId], references: [id], onDelete: SetNull)
-  children   Node[]     @relation("NodeTree")
+  project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  direction  Direction?      @relation(fields: [directionId], references: [id], onDelete: SetNull)
+  parentNode Node?           @relation("NodeTree", fields: [parentNodeId], references: [id], onDelete: SetNull)
+  children   Node[]          @relation("NodeTree")
+  events     ActivityEvent[]
 
   @@index([projectId])
+  @@unique([projectId, nodeOrdinal])
+  @@index([projectId, archivedAt])
   @@index([directionId])
+  @@index([directionId, archivedAt])
   @@index([parentNodeId])
+  @@index([parentNodeId, archivedAt])
   @@map("nodes")
 }
+
+model ActivityEvent {
+  id          String   @id @default(cuid())
+  projectId   String   @map("project_id")
+  nodeId      String?  @map("node_id")
+  directionId String?  @map("direction_id")
+  kind        String
+  actorType   String?  @map("actor_type")
+  actorLabel  String?  @map("actor_label")
+  source      String   @default("system")
+  summary     String?
+  payload     Json
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  node      Node?      @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+  direction Direction? @relation(fields: [directionId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+  @@index([projectId, kind])
+  @@index([nodeId, createdAt])
+  @@index([directionId, createdAt])
+  @@map("activity_events")
+}
+

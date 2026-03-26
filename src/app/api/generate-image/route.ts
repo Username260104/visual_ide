@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Replicate from 'replicate';
 import {
   buildGenerationInput,
   persistGeneratedImages,
   runReplicateGeneration,
 } from '@/lib/imageGeneration';
-
-const replicate = new Replicate();
+import {
+  createReplicateClient,
+  getReplicateErrorMessage,
+} from '@/lib/replicate';
 
 export async function POST(request: NextRequest) {
   try {
+    const replicate = createReplicateClient();
     const {
       prompt,
       numOutputs = 1,
@@ -59,7 +61,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ imageUrls });
   } catch (error) {
     console.error('Image generation error:', error);
-    const message = error instanceof Error ? error.message : 'Failed to generate images';
+    const message = getReplicateErrorMessage(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
