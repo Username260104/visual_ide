@@ -15,7 +15,8 @@ export type SidebarTab =
   | 'branches'
   | 'strategy'
   | 'activity'
-  | 'archive';
+  | 'archive'
+  | 'settings';
 
 export type SaveFeedbackEntityType = 'node' | 'direction' | 'project' | 'staging';
 

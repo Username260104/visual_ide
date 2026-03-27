@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { ChevronDown, ChevronUp, Settings2, Sparkles } from 'lucide-react';
+import { Settings2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
@@ -26,6 +26,7 @@ const SIDEBAR_TAB_LABELS: Record<SidebarTab, string> = {
   strategy: '전략',
   activity: '기록',
   archive: '보관함',
+  settings: '설정',
 };
 
 export function Sidebar() {
@@ -33,6 +34,7 @@ export function Sidebar() {
   const activeSidebarTab = useUIStore((state) => state.activeSidebarTab);
   const branchFilter = useUIStore((state) => state.branchFilter);
   const saveFeedbackByKey = useUIStore((state) => state.saveFeedbackByKey);
+  const setActiveSidebarTab = useUIStore((state) => state.setActiveSidebarTab);
   const setBranchFilter = useUIStore((state) => state.setBranchFilter);
   const setDirectionDialogOpen = useUIStore(
     (state) => state.setDirectionDialogOpen
@@ -51,7 +53,6 @@ export function Sidebar() {
 
   const [pendingDirectionId, setPendingDirectionId] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
 
   const nodeList = useMemo(() => Object.values(nodes), [nodes]);
   const directionList = useMemo(() => Object.values(directions), [directions]);
@@ -275,39 +276,9 @@ export function Sidebar() {
         )}
 
         {activeSidebarTab === 'archive' && <ArchiveSettingsPanel />}
-      </div>
 
-      <div
-        className="shrink-0 border-t p-3"
-        style={{ borderColor: 'var(--border-default)' }}
-      >
-        <button
-          className="flex w-full items-center justify-between gap-2 rounded px-3 py-2 text-left text-xs font-semibold transition-opacity hover:opacity-90"
-          style={{
-            backgroundColor: isSettingsPanelOpen
-              ? 'var(--bg-active)'
-              : 'transparent',
-            color: isSettingsPanelOpen
-              ? 'var(--text-accent)'
-              : 'var(--text-secondary)',
-            border: '1px solid var(--border-default)',
-          }}
-          onClick={() => setIsSettingsPanelOpen((current) => !current)}
-          aria-expanded={isSettingsPanelOpen}
-        >
-          <span className="flex items-center gap-2">
-            <Settings2 className="h-3.5 w-3.5" />
-            설정
-          </span>
-          {isSettingsPanelOpen ? (
-            <ChevronDown className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronUp className="h-3.5 w-3.5" />
-          )}
-        </button>
-
-        {isSettingsPanelOpen && (
-          <div className="mt-3 max-h-[320px] overflow-y-auto pr-1">
+        {activeSidebarTab === 'settings' && (
+          <div className="p-3">
             <SettingsPanel
               projectId={projectId}
               nodeCount={nodeCount}
@@ -316,6 +287,29 @@ export function Sidebar() {
             />
           </div>
         )}
+      </div>
+
+      <div
+        className="shrink-0 border-t p-3"
+        style={{ borderColor: 'var(--border-default)' }}
+      >
+        <button
+          className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs font-semibold transition-opacity hover:opacity-90"
+          style={{
+            backgroundColor: activeSidebarTab === 'settings'
+              ? 'var(--bg-active)'
+              : 'transparent',
+            color: activeSidebarTab === 'settings'
+              ? 'var(--text-accent)'
+              : 'var(--text-secondary)',
+            border: '1px solid var(--border-default)',
+          }}
+          onClick={() => setActiveSidebarTab('settings')}
+          aria-current={activeSidebarTab === 'settings' ? 'page' : undefined}
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+          설정
+        </button>
       </div>
 
       <DirectionDialog />
@@ -599,7 +593,7 @@ function SettingsPanel({
 
       <SidebarPlaceholderPanel
         title="연결과 내보내기"
-        description="이미지 브릿지와 외부 워크플로 연결 옵션은 이 하단 유틸리티 영역에 이어 붙이는 방향이 자연스럽습니다."
+        description="이미지 브릿지와 외부 워크플로 연결 옵션은 이 설정 화면 안에서 이어서 확장할 수 있습니다."
       />
     </div>
   );
