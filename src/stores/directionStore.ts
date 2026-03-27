@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { fetchJson, indexById } from '@/lib/clientApi';
 import { Direction } from '@/lib/types';
 import { useUIStore } from '@/stores/uiStore';
@@ -121,7 +121,7 @@ export const useDirectionStore = create<DirectionStore>((set, get) => ({
       entityType: 'direction',
       entityId: id,
       action: 'delete',
-      message: '방향 삭제 중...',
+      message: '브랜치 보관 중...',
     });
 
     const projectId = get().projectId;
@@ -142,7 +142,7 @@ export const useDirectionStore = create<DirectionStore>((set, get) => ({
         return { directions: rest };
       });
 
-      useUIStore.getState().markSaveFeedbackSuccess(feedbackKey, '방향이 삭제되었습니다');
+      useUIStore.getState().markSaveFeedbackSuccess(feedbackKey, '브랜치를 보관했습니다.');
       return true;
     } catch (error) {
       useUIStore
@@ -159,5 +159,6 @@ function getDeleteErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return '방향을 삭제하지 못했습니다';
+  return '브랜치를 보관하지 못했습니다';
 }
+

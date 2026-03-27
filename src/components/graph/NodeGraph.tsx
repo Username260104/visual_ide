@@ -35,6 +35,7 @@ function NodeGraphInner() {
   const setZoomLevel = useUIStore((state) => state.setZoomLevel);
   const selectNode = useUIStore((state) => state.selectNode);
   const setDetailMode = useUIStore((state) => state.setDetailMode);
+  const branchFilter = useUIStore((state) => state.branchFilter);
   const selectedNodeId = useUIStore((state) => state.selectedNodeId);
   const nodesById = useNodeStore((state) => state.nodes);
   const deleteNode = useNodeStore((state) => state.deleteNode);
@@ -43,7 +44,24 @@ function NodeGraphInner() {
   const { isDragging, onDragOver, onDragLeave, onDrop } = useImageDrop();
 
   const nodeList = useMemo(() => Object.values(nodesById), [nodesById]);
-  const nodeCount = nodeList.length;
+  const filteredNodeList = useMemo(() => {
+    switch (branchFilter.kind) {
+      case 'unclassified':
+        return nodeList.filter((node) => node.directionId === null);
+      case 'direction':
+        return nodeList.filter(
+          (node) => node.directionId === branchFilter.directionId
+        );
+      case 'all':
+      default:
+        return nodeList;
+    }
+  }, [branchFilter, nodeList]);
+  const filteredNodeIds = useMemo(
+    () => new Set(filteredNodeList.map((node) => node.id)),
+    [filteredNodeList]
+  );
+  const nodeCount = filteredNodeList.length;
   const [rfNodes, setRfNodes] = useState<Node<NodeData>[]>([]);
   const [contextMenu, setContextMenu] = useState<{
     nodeId: string;
@@ -59,8 +77,10 @@ function NodeGraphInner() {
     : '';
 
   useEffect(() => {
-    setRfNodes((current) => syncFlowNodes(current, nodeList, selectedNodeId));
-  }, [nodeList, selectedNodeId]);
+    setRfNodes((current) =>
+      syncFlowNodes(current, filteredNodeList, selectedNodeId)
+    );
+  }, [filteredNodeList, selectedNodeId]);
 
   useEffect(() => {
     if (!contextMenu) {
@@ -78,7 +98,15 @@ function NodeGraphInner() {
   }, [contextMenu]);
 
   useEffect(() => {
+    if (selectedNodeId && !filteredNodeIds.has(selectedNodeId)) {
+      selectNode(null);
+    }
+
     if (contextMenu && !nodesById[contextMenu.nodeId]) {
+      setContextMenu(null);
+    }
+
+    if (contextMenu && !filteredNodeIds.has(contextMenu.nodeId)) {
       setContextMenu(null);
     }
 
@@ -86,16 +114,31 @@ function NodeGraphInner() {
       setReparentNodeId(null);
     }
 
+    if (reparentNodeId && !filteredNodeIds.has(reparentNodeId)) {
+      setReparentNodeId(null);
+    }
+
     if (deleteTargetId && !nodesById[deleteTargetId]) {
       setDeleteTargetId(null);
       setIsDeletingNode(false);
     }
-  }, [contextMenu, deleteTargetId, nodesById, reparentNodeId]);
+  }, [
+    contextMenu,
+    deleteTargetId,
+    filteredNodeIds,
+    nodesById,
+    reparentNodeId,
+    selectNode,
+    selectedNodeId,
+  ]);
 
   const rfEdges: Edge[] = useMemo(
     () =>
-      nodeList
-        .filter((node) => node.parentNodeId !== null)
+      filteredNodeList
+        .filter(
+          (node) =>
+            node.parentNodeId !== null && filteredNodeIds.has(node.parentNodeId)
+        )
         .map((node) => {
           const direction = node.directionId ? directions[node.directionId] : null;
           const isConnectedToSelection =
@@ -116,7 +159,7 @@ function NodeGraphInner() {
             zIndex: isConnectedToSelection ? 12 : 1,
           };
         }),
-    [directions, nodeList, selectedNodeId]
+    [directions, filteredNodeIds, filteredNodeList, selectedNodeId]
   );
 
   const handlePaneClick = useCallback(() => {
@@ -271,7 +314,7 @@ function NodeGraphInner() {
       },
       {
         id: 'delete',
-        label: '삭제',
+        label: '보관',
         tone: 'danger',
         onSelect: () => {
           setDeleteTargetId(contextMenuNode.id);
@@ -337,7 +380,7 @@ function NodeGraphInner() {
                 `직계 자식 ${deleteImpact.directChildrenCount}개`,
                 `전체 후손 ${deleteImpact.descendantCount}개`,
                 deleteTargetNode.directionId
-                  ? '현재 direction 연결 정보가 함께 해제됩니다.'
+                  ? '현재 브랜치 연결 정보가 함께 해제됩니다.'
                   : '미분류 이미지입니다.',
               ]
             : []
@@ -381,7 +424,7 @@ function NodeGraphInner() {
             </svg>
             <p className="text-sm">이미지를 드래그해 작업을 시작해 보세요.</p>
             <p className="mt-1.5 text-[11px] opacity-60">
-              또는 사이드바에서 AI 생성으로 첫 이미지를 만들 수 있습니다.
+              또는 사이드바 상단의 이미지 생성 버튼으로 첫 결과를 만들어 보세요.
             </p>
           </div>
         </div>

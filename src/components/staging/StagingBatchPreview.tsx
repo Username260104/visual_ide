@@ -9,7 +9,7 @@ interface StagingBatchPreviewProps {
 
 export function StagingBatchPreview({
   batch,
-  title = '최근 staging 결과',
+  title = '최근 검토 결과',
 }: StagingBatchPreviewProps) {
   const visibleCandidates = batch.candidates.filter(
     (candidate) => candidate.status === 'staged'
@@ -40,8 +40,8 @@ export function StagingBatchPreview({
             {title}
           </div>
           <div className="mt-1 text-xs" style={{ color: 'var(--text-primary)' }}>
-            {visibleCandidates.length}개의 결과가 staging에 보관되어 있습니다.
-            {discardedCount > 0 && ` / 버린 후보 ${discardedCount}개`}
+            {visibleCandidates.length}개의 결과가 검토함에 대기 중입니다.
+            {discardedCount > 0 && ` / 제외한 후보 ${discardedCount}개`}
           </div>
         </div>
         <span
@@ -82,8 +82,9 @@ export function StagingBatchPreview({
       </div>
 
       <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-        선택과 버리기는 하단 staging tray에서 이어서 정리할 수 있습니다.
+        선택과 제외는 하단 검토함에서 이어서 정리할 수 있습니다.
       </p>
     </div>
   );
 }
+

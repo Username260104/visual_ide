@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
 import {
@@ -38,7 +38,7 @@ const COPY = {
   projectContextSubtitle:
     '브리프와 제약을 보면서 프롬프트를 다듬을 수 있습니다.',
   projectContextEmpty:
-    '아직 프로젝트 전략이 비어 있습니다. Settings에서 브리프를 입력하면 생성 시 함께 참고할 수 있습니다.',
+    '아직 프로젝트 전략이 비어 있습니다. 전략 탭에서 브리프를 입력하면 생성 시 함께 참고할 수 있습니다.',
   intent: '사용자 의도',
   improve: 'AI 개선',
   improving: '개선 중...',
@@ -56,11 +56,11 @@ const COPY = {
   steps: '스텝',
   outputCount: '생성 수량',
   batchFallback:
-    '이 모델은 배치 생성을 지원하지 않아 선택한 수량만큼 병렬 요청으로 처리합니다.',
+    '이 모델은 한 번에 여러 장 생성을 지원하지 않아 선택한 수량만큼 병렬 요청으로 처리합니다.',
   cancel: '취소',
   generate: '생성',
   generating: '생성 중...',
-  stagingTitle: '최근 생성 staging',
+  stagingTitle: '최근 생성 검토 결과',
   improvePending:
     'AI가 입력한 의도를 더 구체적인 프롬프트로 정리하고 있습니다...',
   improveDone:
@@ -258,7 +258,7 @@ export function GenerateDialog() {
       });
 
       setStatus(
-        `${imageUrls.length}개의 결과를 staging에 올렸습니다. 아직 캔버스에는 추가되지 않았습니다.`
+        `${imageUrls.length}개의 결과를 검토함에 올렸습니다. 아직 캔버스에는 추가되지 않았습니다.`
       );
     } catch (error) {
       console.error('Generation error:', error);
@@ -700,3 +700,4 @@ function getAspectRatioPreview(ratio: string) {
     height: Math.round((height / maxSide) * 16),
   };
 }
+

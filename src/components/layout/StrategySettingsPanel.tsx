@@ -86,21 +86,21 @@ const DIRECTION_FIELD_META: Array<{
     field: 'thesis',
     label: '방향 가설',
     placeholder:
-      '이 방향이 왜 유효한지, 무엇을 노리는지 적어 주세요.',
+      '이 브랜치가 왜 유효한지, 무엇을 노리는지 적어 주세요.',
     rows: 4,
   },
   {
     field: 'fitCriteria',
     label: '적합 기준',
     placeholder:
-      '이 방향이 잘 됐다고 판단하는 기준을 적어 주세요.',
+      '이 브랜치가 잘 됐다고 판단하는 기준을 적어 주세요.',
     rows: 3,
   },
   {
     field: 'antiGoal',
     label: '피해야 할 느낌',
     placeholder:
-      '이 방향에서 나오면 안 되는 톤이나 요소를 적어 주세요.',
+      '이 브랜치에서 나오면 안 되는 톤이나 요소를 적어 주세요.',
     rows: 3,
   },
   {
@@ -421,7 +421,7 @@ export function StrategySettingsPanel() {
             className="text-sm font-semibold"
             style={{ color: 'var(--text-primary)' }}
           >
-            방향 전략
+            브랜치 전략
           </h3>
         </div>
 
@@ -598,3 +598,4 @@ function getFeedbackMeta(
 
   return { color: 'var(--text-accent)', message: feedback.message };
 }
+

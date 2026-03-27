@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { fetchJson } from '@/lib/clientApi';
@@ -137,7 +137,7 @@ export function ArchiveSettingsPanel() {
         entityType: 'direction',
         entityId: directionId,
         action: 'restore',
-        message: '보관된 방향을 복구하는 중...',
+        message: '보관된 브랜치를 복구하는 중...',
       });
 
       setPendingRestoreKey(restoreKey);
@@ -150,14 +150,14 @@ export function ArchiveSettingsPanel() {
 
         useUIStore
           .getState()
-          .markSaveFeedbackSuccess(feedbackKey, '방향을 복구했습니다.');
+          .markSaveFeedbackSuccess(feedbackKey, '브랜치를 복구했습니다.');
         await Promise.all([loadArchivedItems(), refreshActiveData()]);
       } catch (restoreError) {
         useUIStore.getState().markSaveFeedbackError(
           feedbackKey,
           restoreError instanceof Error
             ? restoreError.message
-            : '방향을 복구하지 못했습니다.'
+            : '브랜치를 복구하지 못했습니다.'
         );
       } finally {
         setPendingRestoreKey((current) =>
@@ -236,7 +236,7 @@ export function ArchiveSettingsPanel() {
               보관함
             </h3>
             <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-              보관된 방향과 이미지를 검색하고 필요할 때 복구할 수 있습니다.
+              보관된 브랜치와 이미지를 검색하고 필요할 때 복구할 수 있습니다.
             </p>
           </div>
           <button
@@ -257,7 +257,7 @@ export function ArchiveSettingsPanel() {
             className="rounded px-3 py-2"
             style={{ backgroundColor: 'var(--bg-active)' }}
           >
-            <div style={{ color: 'var(--text-muted)' }}>보관된 방향</div>
+            <div style={{ color: 'var(--text-muted)' }}>보관된 브랜치</div>
             <div
               className="mt-1 text-sm font-semibold"
               style={{ color: 'var(--text-primary)' }}
@@ -349,7 +349,7 @@ export function ArchiveSettingsPanel() {
             className="text-sm font-semibold"
             style={{ color: 'var(--text-primary)' }}
           >
-            보관된 방향
+            보관된 브랜치
           </h3>
           <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
             {filteredArchivedDirections.length} / {archivedDirections.length}
@@ -359,13 +359,13 @@ export function ArchiveSettingsPanel() {
         <div className="flex flex-col">
           {isLoading ? (
             <p className="px-3 py-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-              보관된 방향을 불러오는 중입니다.
+              보관된 브랜치를 불러오는 중입니다.
             </p>
           ) : filteredArchivedDirections.length === 0 ? (
             <p className="px-3 py-4 text-xs" style={{ color: 'var(--text-muted)' }}>
               {archivedDirections.length === 0
-                ? '보관된 방향이 없습니다.'
-                : '검색 조건에 맞는 방향이 없습니다.'}
+                ? '보관된 브랜치가 없습니다.'
+                : '검색 조건에 맞는 브랜치가 없습니다.'}
             </p>
           ) : (
             filteredArchivedDirections.map((direction) => {
@@ -390,7 +390,7 @@ export function ArchiveSettingsPanel() {
                       {direction.name}
                     </p>
                     <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                      복구하면 다시 분류 목록에 나타납니다.
+                      복구하면 다시 브랜치 목록에 나타납니다.
                     </p>
                   </div>
                   <button
@@ -431,7 +431,7 @@ export function ArchiveSettingsPanel() {
               보관된 이미지
             </h3>
             <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              부모나 방향이 아직 보관 중이면 해당 연결은 복구 시 자동으로 비워집니다.
+              부모나 브랜치가 아직 보관 중이면 해당 연결은 복구 시 자동으로 비워집니다.
             </p>
           </div>
           <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
@@ -528,3 +528,5 @@ export function ArchiveSettingsPanel() {
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { NodeGraph } from '@/components/graph/NodeGraph';
 import { IDELayout } from '@/components/layout/IDELayout';
@@ -27,7 +27,7 @@ export default function ProjectPage({
     return (
       <FullscreenState
         title="프로젝트를 불러오는 중입니다."
-        description="노드와 방향 데이터를 준비하고 있습니다."
+        description="노드와 브랜치 데이터를 준비하고 있습니다."
         loading
       />
     );
@@ -96,3 +96,4 @@ function FullscreenState({
     </div>
   );
 }
+

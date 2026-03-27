@@ -1,6 +1,7 @@
-'use client';
+﻿'use client';
 
-import { useMemo, useState } from 'react';
+import { Settings2, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
 import { DestructiveActionDialog } from '@/components/ui/DestructiveActionDialog';
@@ -12,7 +13,6 @@ import { DirectionDialog } from './DirectionDialog';
 import { StrategySettingsPanel } from './StrategySettingsPanel';
 
 const SIDEBAR_TAB_LABELS: Record<SidebarTab, string> = {
-  'image-generation': '이미지 생성',
   'image-bridge': '이미지 브릿지',
   branches: '브랜치',
   strategy: '전략',
@@ -24,7 +24,10 @@ const SIDEBAR_TAB_LABELS: Record<SidebarTab, string> = {
 export function Sidebar() {
   const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
   const activeSidebarTab = useUIStore((state) => state.activeSidebarTab);
+  const branchFilter = useUIStore((state) => state.branchFilter);
   const saveFeedbackByKey = useUIStore((state) => state.saveFeedbackByKey);
+  const setActiveSidebarTab = useUIStore((state) => state.setActiveSidebarTab);
+  const setBranchFilter = useUIStore((state) => state.setBranchFilter);
   const setDirectionDialogOpen = useUIStore(
     (state) => state.setDirectionDialogOpen
   );
@@ -67,6 +70,15 @@ export function Sidebar() {
   const unclassifiedCount = directionCounts.__unclassified__ ?? 0;
   const deleteTargetDirection = deleteTargetId ? directions[deleteTargetId] : null;
 
+  useEffect(() => {
+    if (
+      branchFilter.kind === 'direction' &&
+      !directions[branchFilter.directionId]
+    ) {
+      setBranchFilter({ kind: 'all' });
+    }
+  }, [branchFilter, directions, setBranchFilter]);
+
   if (!isSidebarOpen) {
     return null;
   }
@@ -91,7 +103,7 @@ export function Sidebar() {
 
   return (
     <div
-      className="flex w-[280px] shrink-0 flex-col overflow-y-auto border-r"
+      className="flex w-[280px] shrink-0 flex-col overflow-hidden border-r"
       style={{
         backgroundColor: 'var(--sidebar-bg)',
         borderColor: 'var(--border-default)',
@@ -108,6 +120,33 @@ export function Sidebar() {
       >
         프로젝트 목록
       </Link>
+
+      <div
+        className="shrink-0 border-b px-3 py-3"
+        style={{ borderColor: 'var(--border-default)' }}
+      >
+        <button
+          className="flex w-full items-start gap-3 rounded px-3 py-3 text-left transition-opacity hover:opacity-90"
+          style={{
+            backgroundColor: 'var(--accent-primary)',
+            color: 'var(--text-inverse)',
+          }}
+          onClick={() => setGenerateDialogOpen(true)}
+        >
+          <span
+            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded"
+            style={{ backgroundColor: 'rgba(255,255,255,0.16)' }}
+          >
+            <Sparkles className="h-4 w-4" />
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="text-sm font-semibold">이미지 생성</span>
+            <span className="mt-1 text-[11px]" style={{ opacity: 0.86 }}>
+              생성 결과는 먼저 검토함에 올라오고, 확인 후 캔버스에 반영됩니다.
+            </span>
+          </span>
+        </button>
+      </div>
 
       <div
         className="flex h-9 shrink-0 items-center justify-between px-4 text-xs font-semibold uppercase tracking-wider"
@@ -129,152 +168,133 @@ export function Sidebar() {
         )}
       </div>
 
-      {activeSidebarTab === 'image-generation' && (
-        <div className="flex flex-col gap-3 p-3">
-          <section
-            className="rounded border p-3"
-            style={{
-              borderColor: 'var(--border-default)',
-              backgroundColor: 'var(--bg-surface)',
-            }}
-          >
-            <h3
-              className="text-sm font-semibold"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              이미지 생성
-            </h3>
-            <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-              생성 결과는 캔버스에 바로 추가되지 않고 staging tray에 먼저 쌓입니다.
-            </p>
-            <button
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded px-3 py-2 text-xs font-semibold transition-opacity hover:opacity-90"
-              style={{
-                backgroundColor: 'var(--accent-primary)',
-                color: 'var(--text-inverse)',
-              }}
-              onClick={() => setGenerateDialogOpen(true)}
-              title="AI로 이미지를 생성"
-            >
-              <svg
-                className="h-3.5 w-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-              이미지 생성
-            </button>
-          </section>
-        </div>
-      )}
-
-      {activeSidebarTab === 'image-bridge' && (
-        <div className="flex flex-col gap-3 p-3">
-          <SidebarPlaceholderPanel
-            title="이미지 브릿지"
-            description="들여오기와 내보내기 기능이 들어올 자리입니다. 이번 단계에서는 탭 구조만 먼저 확보합니다."
-          />
-        </div>
-      )}
-
-      {activeSidebarTab === 'branches' && (
-        <div className="flex flex-col gap-2 p-3">
-          <div
-            className="flex items-center gap-2 rounded px-2 py-1.5 text-sm"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            <span
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: 'var(--status-unclassified)' }}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {activeSidebarTab === 'image-bridge' && (
+          <div className="flex flex-col gap-3 p-3">
+            <SidebarPlaceholderPanel
+              title="이미지 브릿지"
+              description="들여오기와 내보내기 기능은 다음 단계에서 다룹니다. 지금은 작업 흐름에서 자리를 먼저 확보해 둡니다."
             />
-            <span className="flex-1">미분류</span>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {unclassifiedCount}
-            </span>
           </div>
+        )}
 
-          {directionList.map((direction) => {
-            const count = directionCounts[direction.id] ?? 0;
-            const isDeleting = pendingDirectionId === direction.id;
+        {activeSidebarTab === 'branches' && (
+          <div className="flex flex-col gap-2 p-3">
+            <BranchFilterRow
+              label="전체"
+              count={nodeCount}
+              active={branchFilter.kind === 'all'}
+              onClick={() => setBranchFilter({ kind: 'all' })}
+            />
 
-            return (
-              <div
-                key={direction.id}
-                className="group flex items-center gap-2 rounded px-2 py-1.5 text-sm"
-                style={{ color: 'var(--sidebar-fg)' }}
+            <BranchFilterRow
+              label="미분류"
+              count={unclassifiedCount}
+              active={branchFilter.kind === 'unclassified'}
+              dotColor="var(--status-unclassified)"
+              onClick={() => setBranchFilter({ kind: 'unclassified' })}
+            />
+
+            {directionList.map((direction) => {
+              const count = directionCounts[direction.id] ?? 0;
+              const isDeleting = pendingDirectionId === direction.id;
+
+              return (
+                <div key={direction.id} className="group flex items-center gap-2">
+                  <BranchFilterRow
+                    label={direction.name}
+                    count={count}
+                    active={
+                      branchFilter.kind === 'direction' &&
+                      branchFilter.directionId === direction.id
+                    }
+                    dotColor={direction.color}
+                    onClick={() =>
+                      setBranchFilter({
+                        kind: 'direction',
+                        directionId: direction.id,
+                      })
+                    }
+                  />
+                  <button
+                    className="shrink-0 rounded px-1.5 py-1 text-xs transition-opacity group-hover:opacity-100"
+                    style={{
+                      color: isDeleting
+                        ? 'var(--text-accent)'
+                        : 'var(--text-muted)',
+                      opacity: isDeleting ? 1 : 0,
+                    }}
+                    onClick={() => setDeleteTargetId(direction.id)}
+                    title={isDeleting ? '보관 중...' : '보관'}
+                    disabled={Boolean(pendingDirectionId)}
+                  >
+                    {isDeleting ? '...' : 'x'}
+                  </button>
+                </div>
+              );
+            })}
+
+            {directionList.length === 0 && nodeCount === 0 && (
+              <p
+                className="px-2 py-4 text-center text-xs"
+                style={{ color: 'var(--text-muted)' }}
               >
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: direction.color }}
-                />
-                <span className="flex-1 truncate">{direction.name}</span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {count}
-                </span>
-                <button
-                  className="ml-1 text-xs transition-opacity group-hover:opacity-100"
-                  style={{
-                    color: isDeleting
-                      ? 'var(--text-accent)'
-                      : 'var(--text-muted)',
-                    opacity: isDeleting ? 1 : 0,
-                  }}
-                  onClick={() => setDeleteTargetId(direction.id)}
-                  title={isDeleting ? '보관 중...' : '보관'}
-                  disabled={Boolean(pendingDirectionId)}
-                >
-                  {isDeleting ? '...' : 'x'}
-                </button>
-              </div>
-            );
-          })}
+                브랜치를 만들거나 이미지 생성부터 시작해 보세요.
+              </p>
+            )}
+          </div>
+        )}
 
-          {directionList.length === 0 && nodeCount === 0 && (
-            <p
-              className="px-2 py-4 text-center text-xs"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              브랜치를 만들거나 이미지 생성부터 시작해 보세요.
-            </p>
-          )}
-        </div>
-      )}
+        {activeSidebarTab === 'strategy' && (
+          <div className="p-3">
+            <StrategySettingsPanel />
+          </div>
+        )}
 
-      {activeSidebarTab === 'strategy' && (
-        <div className="p-3">
-          <StrategySettingsPanel />
-        </div>
-      )}
+        {activeSidebarTab === 'activity' && (
+          <div className="p-3">
+            <ActivityTimeline
+              projectId={projectId}
+              limit={12}
+              title="최근 기록"
+              emptyMessage="프로젝트 기록이 아직 없습니다."
+              refreshKey={activityRefreshKey}
+            />
+          </div>
+        )}
 
-      {activeSidebarTab === 'activity' && (
-        <div className="p-3">
-          <ActivityTimeline
-            projectId={projectId}
-            limit={12}
-            title="최근 기록"
-            emptyMessage="프로젝트 기록이 아직 없습니다."
-            refreshKey={activityRefreshKey}
-          />
-        </div>
-      )}
+        {activeSidebarTab === 'archive' && <ArchiveSettingsPanel />}
 
-      {activeSidebarTab === 'archive' && <ArchiveSettingsPanel />}
+        {activeSidebarTab === 'settings' && (
+          <div className="flex flex-col gap-3 p-3">
+            <SettingsPanel />
+          </div>
+        )}
+      </div>
 
-      {activeSidebarTab === 'settings' && (
-        <div className="flex flex-col gap-3 p-3">
-          <SidebarPlaceholderPanel
-            title="설정"
-            description="프로젝트 메타 정보, 연결 설정, 운영성 옵션이 들어올 자리입니다. 이번 단계에서는 탭 구조만 분리합니다."
-          />
-        </div>
-      )}
+      <div
+        className="shrink-0 border-t p-3"
+        style={{ borderColor: 'var(--border-default)' }}
+      >
+        <button
+          className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs font-semibold transition-opacity hover:opacity-90"
+          style={{
+            backgroundColor:
+              activeSidebarTab === 'settings'
+                ? 'var(--bg-active)'
+                : 'transparent',
+            color:
+              activeSidebarTab === 'settings'
+                ? 'var(--text-accent)'
+                : 'var(--text-secondary)',
+            border: '1px solid var(--border-default)',
+          }}
+          onClick={() => setActiveSidebarTab('settings')}
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+          설정
+        </button>
+      </div>
 
       <DirectionDialog />
       <DestructiveActionDialog
@@ -320,6 +340,54 @@ export function Sidebar() {
   );
 }
 
+function BranchFilterRow({
+  label,
+  count,
+  active,
+  onClick,
+  dotColor,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+  dotColor?: string;
+}) {
+  return (
+    <button
+      className="flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-sm text-left transition-colors hover:opacity-90"
+      style={{
+        color: active ? 'var(--text-primary)' : 'var(--sidebar-fg)',
+        backgroundColor: active ? 'var(--bg-active)' : 'transparent',
+        border: active
+          ? '1px solid var(--border-default)'
+          : '1px solid transparent',
+      }}
+      onClick={onClick}
+    >
+      {dotColor ? (
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: dotColor }}
+        />
+      ) : (
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{
+            backgroundColor: active
+              ? 'var(--text-accent)'
+              : 'var(--text-muted)',
+          }}
+        />
+      )}
+      <span className="flex-1 truncate">{label}</span>
+      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        {count}
+      </span>
+    </button>
+  );
+}
+
 function SidebarPlaceholderPanel({
   title,
   description,
@@ -347,3 +415,30 @@ function SidebarPlaceholderPanel({
     </section>
   );
 }
+
+function SettingsPanel() {
+  return (
+    <div className="flex flex-col gap-3">
+      <SidebarPlaceholderPanel
+        title="설정"
+        description="설정은 작업 탭이 아니라 도구 기본값을 다루는 유틸리티 영역으로 분리합니다."
+      />
+
+      <SidebarPlaceholderPanel
+        title="프로젝트 정보"
+        description="프로젝트 이름, 설명, 대표 썸네일 같은 메타 정보는 여기에서 다루는 방향이 적절합니다."
+      />
+
+      <SidebarPlaceholderPanel
+        title="생성 기본값"
+        description="기본 모델, 비율, 생성 수량처럼 반복 작업에 영향을 주는 기본값을 다음 단계에서 연결합니다."
+      />
+
+      <SidebarPlaceholderPanel
+        title="연결과 내보내기"
+        description="이미지 브릿지와 외부 워크플로 연결 옵션은 이 영역과 자연스럽게 이어지도록 정리합니다."
+      />
+    </div>
+  );
+}
+

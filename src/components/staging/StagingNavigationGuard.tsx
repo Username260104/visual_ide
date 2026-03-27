@@ -113,12 +113,12 @@ export function StagingNavigationGuard() {
   return (
     <StagingWarningDialog
       isOpen={pendingHref !== null}
-      title="staging 후보를 남긴 채 이동할까요?"
+      title="검토 대기 후보를 남긴 채 이동할까요?"
       description="아직 캔버스에 채택하지 않은 후보가 있어, 이동 전에 한 번 더 확인합니다."
       confirmLabel="이동하기"
       impacts={
         stagedCandidateCount > 0
-          ? [`현재 프로젝트에 staging 후보 ${stagedCandidateCount}개가 남아 있습니다.`]
+          ? [`현재 프로젝트에 검토 대기 후보 ${stagedCandidateCount}개가 남아 있습니다.`]
           : []
       }
       consequences={[
@@ -137,3 +137,4 @@ export function StagingNavigationGuard() {
     />
   );
 }
+

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
+import { useUIStore } from '@/stores/uiStore';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -21,6 +22,7 @@ export function useProjectLoader(projectId: string) {
     const load = async () => {
       setLoadState('loading');
       setError(null);
+      useUIStore.getState().setBranchFilter({ kind: 'all' });
 
       try {
         await Promise.all([
@@ -47,6 +49,7 @@ export function useProjectLoader(projectId: string) {
 
     return () => {
       cancelled = true;
+      useUIStore.getState().setBranchFilter({ kind: 'all' });
       useNodeStore.getState().clearNodes();
       useDirectionStore.getState().clearDirections();
     };

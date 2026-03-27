@@ -5,8 +5,12 @@ export interface PendingDrop {
   position: { x: number; y: number };
 }
 
+export type BranchFilter =
+  | { kind: 'all' }
+  | { kind: 'unclassified' }
+  | { kind: 'direction'; directionId: string };
+
 export type SidebarTab =
-  | 'image-generation'
   | 'image-bridge'
   | 'branches'
   | 'strategy'
@@ -53,6 +57,7 @@ interface UIStore {
   isDetailPanelOpen: boolean;
   isSidebarOpen: boolean;
   activeSidebarTab: SidebarTab;
+  branchFilter: BranchFilter;
   detailMode: 'view' | 'variation';
   zoomLevel: number;
   isGenerating: boolean;
@@ -67,6 +72,7 @@ interface UIStore {
   setZoomLevel: (level: number) => void;
   setGenerating: (v: boolean) => void;
   setActiveSidebarTab: (tab: SidebarTab) => void;
+  setBranchFilter: (filter: BranchFilter) => void;
   setPendingDrop: (drop: PendingDrop | null) => void;
   setDirectionDialogOpen: (open: boolean) => void;
   setGenerateDialogOpen: (open: boolean) => void;
@@ -102,6 +108,7 @@ export const useUIStore = create<UIStore>((set) => ({
   isDetailPanelOpen: false,
   isSidebarOpen: true,
   activeSidebarTab: 'branches',
+  branchFilter: { kind: 'all' },
   detailMode: 'view',
   zoomLevel: 1,
   isGenerating: false,
@@ -127,6 +134,8 @@ export const useUIStore = create<UIStore>((set) => ({
   setGenerating: (v) => set({ isGenerating: v }),
 
   setActiveSidebarTab: (tab) => set({ activeSidebarTab: tab }),
+
+  setBranchFilter: (filter) => set({ branchFilter: filter }),
 
   setPendingDrop: (drop) => set({ pendingDrop: drop }),
 

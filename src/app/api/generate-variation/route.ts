@@ -10,6 +10,8 @@ import {
   getReplicateErrorMessage,
 } from '@/lib/replicate';
 
+export const maxDuration = 10;
+
 export async function POST(request: NextRequest) {
   try {
     const replicate = createReplicateClient();

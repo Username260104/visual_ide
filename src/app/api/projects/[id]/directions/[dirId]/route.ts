@@ -212,5 +212,6 @@ function buildDirectionStrategySummary(
   fields: readonly (typeof DIRECTION_STRATEGY_FIELDS)[number][]
 ) {
   const labels = fields.map((field) => DIRECTION_FIELD_LABELS[field]).join(', ');
-  return `${directionName} 전략 업데이트 (${labels})`;
+  return `${directionName} 브랜치 전략 업데이트 (${labels})`;
 }
+

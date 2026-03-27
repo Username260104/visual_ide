@@ -160,7 +160,7 @@ export function StagingTray() {
       const message =
         error instanceof Error
           ? error.message
-          : 'staging 후보를 채택하지 못했습니다.';
+          : '검토 대기 후보를 채택하지 못했습니다.';
 
       setAcceptError(message);
       markSaveFeedbackError(feedbackKey, message);
@@ -185,10 +185,10 @@ export function StagingTray() {
                 className="text-sm font-semibold"
                 style={{ color: 'var(--text-primary)' }}
               >
-                Staging Tray
+                검토함
               </h2>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {projectBatches.length}개 배치, {stagedCandidateCount}개 후보가 아직
+                {projectBatches.length}개 결과 묶음, {stagedCandidateCount}개 후보 이미지가 아직
                 캔버스에 반영되지 않았습니다.
               </p>
             </div>
@@ -233,7 +233,7 @@ export function StagingTray() {
           }}
         >
           <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            staging 결과 {projectBatches.length}개 배치 / {stagedCandidateCount}개 후보
+            검토 대기 결과 {projectBatches.length}개 묶음 / {stagedCandidateCount}개 후보 이미지
             대기 중
           </div>
           <button
@@ -261,17 +261,17 @@ export function StagingTray() {
 
       <DestructiveActionDialog
         isOpen={pendingDiscardBatch !== null}
-        title="이 staging 배치를 버릴까요?"
-        description="아직 채택하지 않은 후보가 staging tray에서 제거됩니다."
-        confirmLabel="배치 버리기"
+        title="이 결과 묶음을 제외할까요?"
+        description="아직 채택하지 않은 후보가 검토함에서 제거됩니다."
+        confirmLabel="묶음 제외"
         impacts={[
           pendingDiscardBatch
-            ? `${getStagedCandidates(pendingDiscardBatch).length}개의 후보가 제거됩니다`
-            : '선택한 배치가 제거됩니다',
+            ? `${getStagedCandidates(pendingDiscardBatch).length}개의 후보 이미지가 제거됩니다`
+            : '선택한 결과 묶음이 제거됩니다',
         ]}
         consequences={[
           '캔버스에는 아무 노드도 생성되지 않습니다.',
-          '이 작업은 현재 세션의 local staging 결과에만 적용됩니다.',
+          '이 작업은 현재 세션의 임시 검토 결과에만 적용됩니다.',
         ]}
         onClose={() => setPendingDiscardBatchId(null)}
         onConfirm={() => {
@@ -284,17 +284,17 @@ export function StagingTray() {
 
       <StagingWarningDialog
         isOpen={isCloseWarningOpen}
-        title="staging tray를 접을까요?"
+        title="검토함을 접을까요?"
         description="후보가 사라지지는 않지만, 아직 채택 전 상태라 나중에 놓치기 쉬울 수 있습니다."
         confirmLabel="접기"
         impacts={
           stagedCandidateCount > 0
-            ? [`현재 프로젝트에 staging 후보 ${stagedCandidateCount}개가 남아 있습니다.`]
+            ? [`현재 프로젝트에 검토 대기 후보 ${stagedCandidateCount}개가 남아 있습니다.`]
             : []
         }
         consequences={[
           '후보는 삭제되지 않고 하단 요약 바에 그대로 남습니다.',
-          '원할 때 다시 열어 비교 후 채택하거나 버릴 수 있습니다.',
+          '원할 때 다시 열어 비교 후 채택하거나 제외할 수 있습니다.',
         ]}
         onClose={() => setIsCloseWarningOpen(false)}
         onConfirm={() => {
@@ -383,7 +383,7 @@ function StagingBatchCard({
           }}
           onClick={onDiscardBatch}
         >
-          배치 버리기
+          묶음 제외
         </button>
       </div>
 
@@ -434,7 +434,7 @@ function StagingBatchCard({
           onClick={() => discardSelectedCandidates(batch.id)}
           disabled={selectedCount === 0}
         >
-          선택 버리기
+          선택 제외
         </button>
 
         <button
@@ -455,8 +455,8 @@ function StagingBatchCard({
       </div>
 
       <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-        선택한 후보만 노드로 생성됩니다. 나머지 후보는 이번 배치의 비교 결과에서
-        기각으로 기록되고 tray에서 정리됩니다.
+        선택한 후보만 노드로 생성됩니다. 나머지 후보는 이번 결과 묶음의 비교 기록에서
+        기각으로 기록되고 검토함에서 정리됩니다.
       </p>
     </article>
   );
@@ -503,7 +503,7 @@ function AcceptBatchDialog({
             {sourceLabel} 후 채택
           </h3>
           <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            선택한 후보는 노드로 생성되고, 나머지 후보는 이번 배치에서 기각으로
+            선택한 후보는 노드로 생성되고, 나머지 후보는 이번 결과 묶음에서 기각으로
             기록됩니다.
           </p>
         </div>
@@ -579,7 +579,7 @@ function AcceptBatchDialog({
           onClick={onConfirm}
           disabled={acceptedCandidates.length === 0 || isSubmitting}
         >
-          {isSubmitting ? '채택 중...' : `${acceptedCandidates.length}개 후보 채택`}
+          {isSubmitting ? '채택 중...' : `${acceptedCandidates.length}개 후보 이미지 채택`}
         </button>
       </div>
     </ModalShell>
@@ -749,3 +749,5 @@ function getSecondaryButtonStyle() {
     border: '1px solid var(--border-default)',
   };
 }
+
+

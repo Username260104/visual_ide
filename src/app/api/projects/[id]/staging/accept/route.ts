@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { findActiveProject } from '@/lib/activeRecords';
 import { createActivityEvent } from '@/lib/activityEvents';
 import { mapPrismaNodeToNodeData } from '@/lib/mappers';
@@ -208,7 +208,7 @@ export async function POST(
         directionId: effectiveDirectionId,
         kind: 'comparison-recorded',
         actorType: 'designer',
-        actorLabel: 'Staging tray',
+        actorLabel: '검토함',
         source: 'manual',
         summary: buildComparisonSummary(
           parsed.value.batch.sourceKind,
@@ -598,6 +598,7 @@ function sanitizeStringArray(values: unknown[], maxItems: number, maxLength: num
     )
   );
 }
+
 
 
 

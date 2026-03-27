@@ -234,7 +234,7 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
       });
 
       setStatus(
-        `${imageUrls.length}개의 변형을 staging에 올렸습니다. 아직 자식 노드는 생성되지 않았습니다.`
+        `${imageUrls.length}개의 변형 결과를 검토함에 올렸습니다. 아직 자식 노드는 생성되지 않았습니다.`
       );
     } catch (error) {
       console.error('Variation error:', error);
@@ -279,12 +279,12 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
       </div>
 
       <StrategyContextCard
-        title={direction ? `${direction.name} 방향 전략` : '방향 전략'}
+        title={direction ? `${direction.name} 브랜치 전략` : '브랜치 전략'}
         items={directionContextItems}
         emptyMessage={
           direction
-            ? '이 방향에 아직 전략 메모가 없습니다. Settings에서 방향 가설과 적합 기준을 입력할 수 있습니다.'
-            : '이 노드는 아직 direction에 연결되지 않았습니다. direction을 지정하면 방향 전략을 함께 볼 수 있습니다.'
+            ? '이 브랜치에 아직 전략 메모가 없습니다. 전략 탭에서 방향 가설과 적합 기준을 입력할 수 있습니다.'
+            : '이 노드는 아직 브랜치에 연결되지 않았습니다. 브랜치를 지정하면 브랜치 전략을 함께 볼 수 있습니다.'
         }
       />
 
@@ -293,7 +293,7 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
         items={projectContextItems}
         isLoading={Boolean(projectId) && isProjectStrategyLoading}
         error={projectStrategyError}
-        emptyMessage="아직 프로젝트 전략이 비어 있습니다. Settings에서 브리프와 제약 조건을 입력하면 변형 과정에서 함께 참고할 수 있습니다."
+        emptyMessage="아직 프로젝트 전략이 비어 있습니다. 전략 탭에서 브리프와 제약 조건을 입력하면 변형 과정에서 함께 참고할 수 있습니다."
       />
 
       <TagSection
@@ -437,7 +437,7 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
       {latestVariationBatch && (
         <StagingBatchPreview
           batch={latestVariationBatch}
-          title="이 노드의 최근 staging"
+          title="이 노드의 최근 검토 결과"
         />
       )}
 
@@ -533,6 +533,7 @@ function TagSection({
 function getModelDescription(modelId: string) {
   return MODEL_DESCRIPTIONS[modelId] ?? '기본 모델';
 }
+
 
 
 

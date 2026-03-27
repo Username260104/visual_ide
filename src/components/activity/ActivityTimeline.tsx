@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchJson } from '@/lib/clientApi';
@@ -232,7 +232,7 @@ function getEventKindLabel(kind: ActivityEventData['kind']) {
     case 'node-status-changed':
       return '상태';
     case 'node-direction-changed':
-      return '방향';
+      return '브랜치';
     case 'node-note-saved':
       return '메모';
     case 'node-archived':
@@ -240,9 +240,9 @@ function getEventKindLabel(kind: ActivityEventData['kind']) {
     case 'node-restored':
       return '복구';
     case 'direction-archived':
-      return '방향 보관';
+      return '브랜치 보관';
     case 'direction-restored':
-      return '방향 복구';
+      return '브랜치 복구';
     case 'project-archived':
       return '프로젝트 보관';
     case 'project-restored':
@@ -258,7 +258,7 @@ function getEventKindLabel(kind: ActivityEventData['kind']) {
     case 'brief-updated':
       return '브리프';
     case 'direction-thesis-updated':
-      return '방향 전략';
+      return '브랜치 전략';
     default:
       return '기록';
   }

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -180,7 +180,7 @@ export function ProjectCard({
               노드 {project.nodeCount ?? 0}
             </span>
             <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              방향 {project.directionCount ?? 0}
+              브랜치 {project.directionCount ?? 0}
             </span>
           </div>
 
@@ -204,7 +204,7 @@ export function ProjectCard({
           confirmLabel="프로젝트 보관"
           impacts={[
             `노드 ${project.nodeCount ?? 0}개`,
-            `방향 ${project.directionCount ?? 0}개`,
+            `브랜치 ${project.directionCount ?? 0}개`,
           ]}
           consequences={[
             '프로젝트 목록의 기본 화면에서는 숨겨집니다',
@@ -224,3 +224,4 @@ export function ProjectCard({
     </>
   );
 }
+

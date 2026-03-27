@@ -5,9 +5,7 @@ import {
   ArrowLeftRight,
   Compass,
   GitBranch,
-  ImagePlus,
   ScrollText,
-  Settings2,
   type LucideIcon,
 } from 'lucide-react';
 import { SidebarTab, useUIStore } from '@/stores/uiStore';
@@ -17,13 +15,11 @@ const SIDEBAR_TABS: Array<{
   label: string;
   icon: LucideIcon;
 }> = [
-  { id: 'image-generation', label: '이미지 생성', icon: ImagePlus },
   { id: 'image-bridge', label: '이미지 브릿지', icon: ArrowLeftRight },
   { id: 'branches', label: '브랜치', icon: GitBranch },
   { id: 'strategy', label: '전략', icon: Compass },
   { id: 'activity', label: '기록', icon: ScrollText },
   { id: 'archive', label: '보관함', icon: Archive },
-  { id: 'settings', label: '설정', icon: Settings2 },
 ];
 
 export function ActivityBar() {

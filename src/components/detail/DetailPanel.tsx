@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {
   useEffect,
@@ -12,6 +12,7 @@ import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
 import { ManualEventComposer } from '@/components/activity/ManualEventComposer';
 import { StrategyContextCard } from '@/components/context/StrategyContextCard';
 import { STATUS_COLORS, STATUS_LABELS } from '@/lib/constants';
+import { collectDescendantIds } from '@/lib/nodeTree';
 import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
 import {
   getNodeDisplayPrompt,
@@ -25,12 +26,18 @@ import {
   type SaveFeedbackEntry,
   useUIStore,
 } from '@/stores/uiStore';
+import { DestructiveActionDialog } from '@/components/ui/DestructiveActionDialog';
+import { ReparentNodeDialog } from '@/components/graph/ReparentNodeDialog';
 import { StatusSelector, requiresStatusReason } from './StatusSelector';
 import { VariationPanel } from './VariationPanel';
 
 const COPY = {
+  quickActions: '빠른 작업',
   variation: '변형 만들기',
-  direction: '방향',
+  reparent: '부모 변경',
+  archive: '보관',
+  goToParent: '부모로 이동',
+  direction: '브랜치',
   unclassified: '미분류',
   lineage: '계보',
   root: '루트',
@@ -56,9 +63,9 @@ const COPY = {
   created: '생성일',
   manualActivity: '수동 기록',
   manualActivityEmpty: '이 이미지와 관련된 수동 기록이 아직 없습니다.',
-  directionStrategyTitle: '방향 전략',
+  directionStrategyTitle: '브랜치 전략',
   directionStrategyEmpty:
-    '이 방향의 전략 정보가 아직 없습니다. Settings에서 입력해 주세요.',
+    '이 브랜치의 전략 정보가 아직 없습니다. 전략 탭에서 입력해 주세요.',
 } as const;
 
 export function DetailPanel() {
@@ -72,6 +79,7 @@ export function DetailPanel() {
   const nodes = useNodeStore((state) => state.nodes);
   const patchNode = useNodeStore((state) => state.patchNode);
   const updateNode = useNodeStore((state) => state.updateNode);
+  const deleteNode = useNodeStore((state) => state.deleteNode);
   const directions = useDirectionStore((state) => state.directions);
 
   const node = selectedNodeId ? nodes[selectedNodeId] : null;
@@ -113,9 +121,27 @@ export function DetailPanel() {
     () => (node ? getLineageDepth(node, nodes) : 0),
     [node, nodes]
   );
+  const archiveImpact = useMemo(() => {
+    if (!node) {
+      return null;
+    }
+
+    const directChildrenCount = Object.values(nodes).filter(
+      (candidate) => candidate.parentNodeId === node.id
+    ).length;
+    const descendantCount = collectDescendantIds(Object.values(nodes), node.id).size;
+
+    return {
+      directChildrenCount,
+      descendantCount,
+    };
+  }, [node, nodes]);
   const [noteDraft, setNoteDraft] = useState('');
   const [isNoteDirty, setIsNoteDirty] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [reparentNodeId, setReparentNodeId] = useState<string | null>(null);
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const noteDraftRef = useRef(noteDraft);
 
   useEffect(() => {
@@ -141,6 +167,24 @@ export function DetailPanel() {
   const handleNavigateToParent = () => {
     if (node.parentNodeId) {
       selectNode(node.parentNodeId);
+    }
+  };
+
+  const handleArchiveNode = async () => {
+    if (isArchiving) {
+      return;
+    }
+
+    setIsArchiving(true);
+
+    try {
+      const deleted = await deleteNode(node.id);
+      if (deleted) {
+        selectNode(null);
+        setIsArchiveDialogOpen(false);
+      }
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -175,9 +219,9 @@ export function DetailPanel() {
         rollbackOnError: true,
         feedback: {
           action: 'direction',
-          savingMessage: '방향 저장 중...',
-          successMessage: '방향이 저장되었습니다.',
-          errorMessage: '방향을 저장하지 못했습니다.',
+          savingMessage: '브랜치 저장 중...',
+          successMessage: '브랜치가 저장되었습니다.',
+          errorMessage: '브랜치를 저장하지 못했습니다.',
         },
       }
     );
@@ -255,29 +299,29 @@ export function DetailPanel() {
       <NodePreview key={`${node.id}:${node.imageUrl}:full`} node={node} />
 
       <div className="flex flex-col gap-4 p-4">
-        <button
-          className="flex w-full items-center justify-center gap-2 rounded py-2 text-xs font-semibold transition-opacity hover:opacity-90"
-          style={{
-            backgroundColor: 'var(--accent-secondary)',
-            color: 'var(--text-inverse)',
-          }}
-          onClick={() => setDetailMode('variation')}
-        >
-          <svg
-            className="h-3.5 w-3.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+        <PanelSection label={COPY.quickActions}>
+          <div className="grid grid-cols-2 gap-2">
+            <ActionButton
+              label={COPY.variation}
+              tone="primary"
+              onClick={() => setDetailMode('variation')}
             />
-          </svg>
-          {COPY.variation}
-        </button>
+            <ActionButton
+              label={COPY.reparent}
+              onClick={() => setReparentNodeId(node.id)}
+            />
+            <ActionButton
+              label={COPY.goToParent}
+              onClick={handleNavigateToParent}
+              disabled={!parentNode}
+            />
+            <ActionButton
+              label={COPY.archive}
+              tone="danger"
+              onClick={() => setIsArchiveDialogOpen(true)}
+            />
+          </div>
+        </PanelSection>
 
         <StatusSelector
           status={node.status}
@@ -357,6 +401,45 @@ export function DetailPanel() {
 
         <SourceInfoSection node={node} />
       </div>
+
+      <ReparentNodeDialog
+        nodeId={reparentNodeId}
+        onClose={() => setReparentNodeId(null)}
+      />
+      <DestructiveActionDialog
+        isOpen={Boolean(isArchiveDialogOpen && archiveImpact)}
+        title="이미지를 보관할까요?"
+        description={`${getNodeSequenceLabel(node)} 이미지를 보관합니다.`}
+        confirmLabel="이미지 보관"
+        impacts={
+          archiveImpact
+            ? [
+                `직계 자식 ${archiveImpact.directChildrenCount}개`,
+                `전체 후손 ${archiveImpact.descendantCount}개`,
+                node.directionId
+                  ? '현재 브랜치 연결 정보가 함께 해제됩니다.'
+                  : '미분류 이미지입니다.',
+              ]
+            : []
+        }
+        consequences={
+          archiveImpact
+            ? [
+                archiveImpact.directChildrenCount > 0
+                  ? '직계 자식 이미지는 루트 이미지로 승격됩니다.'
+                  : '연결 구조 변화는 없습니다.',
+                '이 이미지의 메모, 상태, 프롬프트 기록은 보관함으로 이동합니다.',
+              ]
+            : []
+        }
+        isSubmitting={isArchiving}
+        onClose={() => {
+          if (!isArchiving) {
+            setIsArchiveDialogOpen(false);
+          }
+        }}
+        onConfirm={() => void handleArchiveNode()}
+      />
     </PanelContainer>
   );
 }
@@ -414,7 +497,7 @@ function NodePreview({
               color: 'var(--text-secondary)',
             }}
           >
-            ???? ???? ?????.
+            이미지를 불러오지 못했습니다.
           </div>
         </div>
       )}
@@ -698,6 +781,51 @@ function PanelSection({
   );
 }
 
+function ActionButton({
+  label,
+  onClick,
+  disabled = false,
+  tone = 'default',
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  tone?: 'default' | 'primary' | 'danger';
+}) {
+  const styles =
+    tone === 'primary'
+      ? {
+          backgroundColor: 'var(--accent-secondary)',
+          color: 'var(--text-inverse)',
+          border: '1px solid transparent',
+        }
+      : tone === 'danger'
+        ? {
+            backgroundColor: 'var(--bg-surface)',
+            color: 'var(--status-dropped)',
+            border: '1px solid var(--border-default)',
+          }
+        : {
+            backgroundColor: 'var(--bg-input)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-default)',
+          };
+
+  return (
+    <button
+      className="rounded px-3 py-2 text-xs font-semibold transition-opacity hover:opacity-90"
+      style={{
+        ...styles,
+        opacity: disabled ? 0.45 : 1,
+      }}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {label}
+    </button>
+  );
+}
+
 function getLineageDepth(node: NodeData, nodes: Record<string, NodeData>) {
   let depth = 0;
   let current: NodeData | undefined = node;
@@ -766,3 +894,5 @@ function getNoteMeta(
 
   return null;
 }
+
+

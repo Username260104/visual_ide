@@ -47,7 +47,7 @@ export function StatusBar() {
   const primaryMessage = activeFeedback
     ? activeFeedback.message
     : stagedCandidateCount > 0
-      ? `staging에 ${stagedCandidateCount}장 대기 중`
+      ? `검토함에 ${stagedCandidateCount}장 대기 중`
       : '준비됨';
 
   return (
@@ -61,7 +61,7 @@ export function StatusBar() {
       <span className="font-medium">{primaryMessage}</span>
       {currentProjectBatches.length > 0 && (
         <span>
-          staging {currentProjectBatches.length}배치 / {stagedCandidateCount}장
+          검토함 {currentProjectBatches.length}개 묶음 / {stagedCandidateCount}장
         </span>
       )}
       {currentProjectBatches.length > 0 && !isTrayOpen && (
@@ -73,11 +73,11 @@ export function StatusBar() {
           }}
           onClick={() => setTrayOpen(true)}
         >
-          staging 열기
+          검토함 열기
         </button>
       )}
       <span>노드 {nodeCount}개</span>
-      <span>방향 {directionCount}개</span>
+      <span>브랜치 {directionCount}개</span>
       <span className="ml-auto">{Math.round(zoomLevel * 100)}%</span>
     </div>
   );
@@ -121,3 +121,5 @@ function getStatusBarTheme(entry: SaveFeedbackEntry | null) {
     color: 'var(--text-inverse)',
   };
 }
+
+
