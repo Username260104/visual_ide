@@ -1,10 +1,12 @@
 'use client';
 
+import { Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactFlow, {
   applyNodeChanges,
   Background,
   Controls,
+  Panel,
   ReactFlowProvider,
   type Edge,
   type Node,
@@ -35,6 +37,9 @@ function NodeGraphInner() {
   const setZoomLevel = useUIStore((state) => state.setZoomLevel);
   const selectNode = useUIStore((state) => state.selectNode);
   const setDetailMode = useUIStore((state) => state.setDetailMode);
+  const setGenerateDialogOpen = useUIStore(
+    (state) => state.setGenerateDialogOpen
+  );
   const branchFilter = useUIStore((state) => state.branchFilter);
   const selectedNodeId = useUIStore((state) => state.selectedNodeId);
   const nodesById = useNodeStore((state) => state.nodes);
@@ -297,7 +302,7 @@ function NodeGraphInner() {
       },
       {
         id: 'focus-parent',
-        label: '부모로 이동',
+        label: '상위로 이동',
         disabled: !contextMenuNode.parentNodeId,
         onSelect: () => {
           if (contextMenuNode.parentNodeId) {
@@ -307,7 +312,7 @@ function NodeGraphInner() {
       },
       {
         id: 'reparent',
-        label: '부모 변경...',
+        label: '상위 변경...',
         onSelect: () => {
           setReparentNodeId(contextMenuNode.id);
         },
@@ -348,6 +353,20 @@ function NodeGraphInner() {
       >
         <Background color="var(--canvas-grid)" gap={20} size={1} />
         <Controls />
+        <Panel position="top-left">
+          <button
+            className="flex items-center gap-2 rounded px-3 py-2 text-sm font-semibold shadow-sm transition-opacity hover:opacity-90"
+            style={{
+              backgroundColor: 'var(--accent-primary)',
+              color: 'var(--text-inverse)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+            onClick={() => setGenerateDialogOpen(true)}
+          >
+            <Sparkles className="h-4 w-4" />
+            이미지 생성
+          </button>
+        </Panel>
       </ReactFlow>
 
       <DropOverlay visible={isDragging} />
@@ -391,7 +410,7 @@ function NodeGraphInner() {
                 deleteImpact.directChildrenCount > 0
                   ? '직계 자식 이미지는 루트 이미지로 승격됩니다.'
                   : '연결 구조 변화는 없습니다.',
-                '이 이미지의 메모, 상태, 프롬프트 기록은 보관함으로 이동합니다.',
+                '이 이미지의 메모, 상태, 프롬프트 로그는 보관함으로 이동합니다.',
               ]
             : []
         }
@@ -424,7 +443,7 @@ function NodeGraphInner() {
             </svg>
             <p className="text-sm">이미지를 드래그해 작업을 시작해 보세요.</p>
             <p className="mt-1.5 text-[11px] opacity-60">
-              또는 사이드바 상단의 이미지 생성 버튼으로 첫 결과를 만들어 보세요.
+              또는 좌측 상단의 이미지 생성 버튼으로 첫 결과를 만들어 보세요.
             </p>
           </div>
         </div>

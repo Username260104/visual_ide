@@ -54,6 +54,7 @@ model Node {
   projectId  String    @map("project_id")
   imageUrl   String    @map("image_url")
   createdAt  DateTime  @default(now()) @map("created_at")
+  contentUpdatedAt DateTime @default(now()) @map("content_updated_at")
   archivedAt DateTime? @map("archived_at")
 
   // Lineage
@@ -101,6 +102,7 @@ model Node {
   @@index([projectId])
   @@unique([projectId, nodeOrdinal])
   @@index([projectId, archivedAt])
+  @@index([projectId, archivedAt, contentUpdatedAt, nodeOrdinal])
   @@index([directionId])
   @@index([directionId, archivedAt])
   @@index([parentNodeId])

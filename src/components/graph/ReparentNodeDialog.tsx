@@ -58,7 +58,7 @@ export function ReparentNodeDialog({
       setError(
         selectionError instanceof Error
           ? selectionError.message
-          : '부모를 변경하지 못했습니다.'
+          : '상위를 변경하지 못했습니다.'
       );
     } finally {
       setIsSubmitting(false);
@@ -80,13 +80,13 @@ export function ReparentNodeDialog({
         className="text-sm font-semibold"
         style={{ color: 'var(--text-primary)' }}
       >
-        부모 변경
+        상위 변경
       </h3>
 
       <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
         <p>대상 이미지: {getNodeSequenceLabel(targetNode)}</p>
         <p className="mt-1">
-          현재 부모: {currentParent ? getNodeSequenceLabel(currentParent) : '루트'}
+          현재 상위: {currentParent ? getNodeSequenceLabel(currentParent) : '루트'}
         </p>
       </div>
 
@@ -97,7 +97,7 @@ export function ReparentNodeDialog({
           color: 'var(--text-muted)',
         }}
       >
-        부모만 변경합니다. 이미지의 고유 순번은 유지되고, 계보 정보만 새 구조에
+        상위만 변경합니다. 이미지의 고유 순번은 유지되고, 계보 정보만 새 구조에
         맞춰 다시 계산됩니다.
       </div>
 
@@ -128,7 +128,7 @@ export function ReparentNodeDialog({
         className="text-[10px] font-semibold uppercase tracking-wider"
         style={{ color: 'var(--text-muted)' }}
       >
-        부모 후보
+        상위 후보
       </div>
 
       <div className="flex max-h-[280px] flex-col gap-1 overflow-y-auto">
@@ -150,7 +150,7 @@ export function ReparentNodeDialog({
 
         {validParents.length === 0 && (
           <p className="px-2 py-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-            선택 가능한 부모 이미지가 없습니다.
+            선택 가능한 상위 이미지가 없습니다.
           </p>
         )}
       </div>

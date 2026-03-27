@@ -68,7 +68,7 @@ export function ActivityTimeline({
       setError(
         loadError instanceof Error
           ? loadError.message
-          : '활동 기록을 불러오지 못했습니다.'
+          : '로그를 불러오지 못했습니다.'
       );
     } finally {
       setIsLoading(false);
@@ -110,7 +110,7 @@ export function ActivityTimeline({
       <div className={compact ? 'flex flex-col gap-2' : 'flex flex-col'}>
         {isLoading && events.length === 0 ? (
           <p className={getMessageClassName(compact)} style={{ color: 'var(--text-muted)' }}>
-            활동 기록을 불러오는 중입니다.
+            로그를 불러오는 중입니다.
           </p>
         ) : error ? (
           <p className={getMessageClassName(compact)} style={{ color: 'var(--status-dropped)' }}>
@@ -219,7 +219,7 @@ function getActorLabel(actorType: ActivityEventData['actorType']) {
     case 'client':
       return '클라이언트';
     default:
-      return '기록';
+      return '로그';
   }
 }
 
@@ -260,7 +260,7 @@ function getEventKindLabel(kind: ActivityEventData['kind']) {
     case 'direction-thesis-updated':
       return '브랜치 전략';
     default:
-      return '기록';
+      return '로그';
   }
 }
 
@@ -332,3 +332,4 @@ function getKindBadgeStyle(kind: ActivityEventData['kind']) {
       };
   }
 }
+

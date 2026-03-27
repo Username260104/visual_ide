@@ -32,7 +32,7 @@ const DEFAULT_MODEL_ID = MODELS[0]?.id ?? 'flux-schnell';
 const COPY = {
   back: '상세 보기로 돌아가기',
   title: '변형 만들기',
-  parentVersion: '부모 버전',
+  parentVersion: '상위 버전',
   prompt: '프롬프트',
   intent: '의도',
   intentDescription: '어떤 방향으로 바꾸고 싶은지 선택해 주세요.',

@@ -34,14 +34,14 @@ import { VariationPanel } from './VariationPanel';
 const COPY = {
   quickActions: '빠른 작업',
   variation: '변형 만들기',
-  reparent: '부모 변경',
+  reparent: '상위 변경',
   archive: '보관',
-  goToParent: '부모로 이동',
+  goToParent: '상위로 이동',
   direction: '브랜치',
   unclassified: '미분류',
   lineage: '계보',
   root: '루트',
-  parent: '부모',
+  parent: '상위',
   depth: '깊이',
   step: '단계',
   intentTags: '의도 태그',
@@ -61,8 +61,8 @@ const COPY = {
   promptSource: '프롬프트 출처',
   seed: '시드',
   created: '생성일',
-  manualActivity: '수동 기록',
-  manualActivityEmpty: '이 이미지와 관련된 수동 기록이 아직 없습니다.',
+  manualActivity: '로그',
+  manualActivityEmpty: '이 이미지와 관련된 로그가 아직 없습니다.',
   directionStrategyTitle: '브랜치 전략',
   directionStrategyEmpty:
     '이 브랜치의 전략 정보가 아직 없습니다. 전략 탭에서 입력해 주세요.',
@@ -428,7 +428,7 @@ export function DetailPanel() {
                 archiveImpact.directChildrenCount > 0
                   ? '직계 자식 이미지는 루트 이미지로 승격됩니다.'
                   : '연결 구조 변화는 없습니다.',
-                '이 이미지의 메모, 상태, 프롬프트 기록은 보관함으로 이동합니다.',
+                '이 이미지의 메모, 상태, 프롬프트 로그는 보관함으로 이동합니다.',
               ]
             : []
         }

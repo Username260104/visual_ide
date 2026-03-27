@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   Compass,
   GitBranch,
+  Settings2,
   ScrollText,
   type LucideIcon,
 } from 'lucide-react';
@@ -18,9 +19,19 @@ const SIDEBAR_TABS: Array<{
   { id: 'image-bridge', label: '이미지 브릿지', icon: ArrowLeftRight },
   { id: 'branches', label: '브랜치', icon: GitBranch },
   { id: 'strategy', label: '전략', icon: Compass },
-  { id: 'activity', label: '기록', icon: ScrollText },
+  { id: 'activity', label: '로그', icon: ScrollText },
   { id: 'archive', label: '보관함', icon: Archive },
 ];
+
+const SETTINGS_TAB: {
+  id: SidebarTab;
+  label: string;
+  icon: LucideIcon;
+} = {
+  id: 'settings',
+  label: '설정',
+  icon: Settings2,
+};
 
 export function ActivityBar() {
   const { activeSidebarTab, setActiveSidebarTab, isSidebarOpen, toggleSidebar } =
@@ -65,6 +76,27 @@ export function ActivityBar() {
           </button>
         );
       })}
+
+      <div className="mt-auto pt-2">
+        <button
+          onClick={() => handleTabClick(SETTINGS_TAB.id)}
+          className="flex h-10 w-10 items-center justify-center rounded transition-colors"
+          style={{
+            color:
+              activeSidebarTab === SETTINGS_TAB.id && isSidebarOpen
+                ? 'var(--activitybar-fg)'
+                : 'var(--activitybar-inactive)',
+            backgroundColor:
+              activeSidebarTab === SETTINGS_TAB.id && isSidebarOpen
+                ? 'var(--bg-active)'
+                : 'transparent',
+          }}
+          title={SETTINGS_TAB.label}
+          aria-label={SETTINGS_TAB.label}
+        >
+          <SETTINGS_TAB.icon className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }

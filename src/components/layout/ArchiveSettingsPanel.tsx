@@ -227,7 +227,7 @@ export function ArchiveSettingsPanel() {
           backgroundColor: 'var(--bg-surface)',
         }}
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-2">
           <div>
             <h3
               className="text-sm font-semibold"
@@ -236,11 +236,11 @@ export function ArchiveSettingsPanel() {
               보관함
             </h3>
             <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-              보관된 브랜치와 이미지를 검색하고 필요할 때 복구할 수 있습니다.
+              보관된 브랜치와 이미지를 찾고 바로 복구할 수 있습니다.
             </p>
           </div>
           <button
-            className="rounded px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-90"
+            className="shrink-0 self-start whitespace-nowrap rounded px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-90"
             style={{
               backgroundColor: 'var(--accent-subtle)',
               color: 'var(--text-accent)',
@@ -290,7 +290,7 @@ export function ArchiveSettingsPanel() {
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="이름, 프롬프트, 메모, 버전으로 찾기"
+            placeholder="이름, 메모, 프롬프트 검색"
             className="w-full rounded px-3 py-2 text-sm"
             style={{
               backgroundColor: 'var(--bg-input)',
@@ -342,16 +342,19 @@ export function ArchiveSettingsPanel() {
         }}
       >
         <div
-          className="flex items-center justify-between border-b px-3 py-2"
+          className="flex items-start justify-between gap-3 border-b px-3 py-2"
           style={{ borderColor: 'var(--border-default)' }}
         >
           <h3
-            className="text-sm font-semibold"
+            className="min-w-0 flex-1 text-sm font-semibold"
             style={{ color: 'var(--text-primary)' }}
           >
             보관된 브랜치
           </h3>
-          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          <span
+            className="shrink-0 text-[11px]"
+            style={{ color: 'var(--text-muted)' }}
+          >
             {filteredArchivedDirections.length} / {archivedDirections.length}
           </span>
         </div>
@@ -394,7 +397,7 @@ export function ArchiveSettingsPanel() {
                     </p>
                   </div>
                   <button
-                    className="rounded px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-90"
+                    className="shrink-0 whitespace-nowrap rounded px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-90"
                     style={{
                       backgroundColor: 'var(--accent-subtle)',
                       color: 'var(--text-accent)',
@@ -420,10 +423,10 @@ export function ArchiveSettingsPanel() {
         }}
       >
         <div
-          className="flex items-center justify-between border-b px-3 py-2"
+          className="flex items-start justify-between gap-3 border-b px-3 py-2"
           style={{ borderColor: 'var(--border-default)' }}
         >
-          <div>
+          <div className="min-w-0 flex-1">
             <h3
               className="text-sm font-semibold"
               style={{ color: 'var(--text-primary)' }}
@@ -431,10 +434,13 @@ export function ArchiveSettingsPanel() {
               보관된 이미지
             </h3>
             <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              부모나 브랜치가 아직 보관 중이면 해당 연결은 복구 시 자동으로 비워집니다.
+              상위 이미지나 브랜치가 아직 보관 중이면 연결은 복구할 때 비워집니다.
             </p>
           </div>
-          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          <span
+            className="shrink-0 text-[11px]"
+            style={{ color: 'var(--text-muted)' }}
+          >
             {filteredArchivedNodes.length} / {archivedNodes.length}
           </span>
         </div>
@@ -508,7 +514,7 @@ export function ArchiveSettingsPanel() {
                     )}
                   </div>
                   <button
-                    className="rounded px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-90"
+                    className="shrink-0 whitespace-nowrap rounded px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-90"
                     style={{
                       backgroundColor: 'var(--accent-subtle)',
                       color: 'var(--text-accent)',

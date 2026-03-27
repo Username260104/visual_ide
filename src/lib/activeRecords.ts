@@ -11,8 +11,8 @@ export async function findActiveProject(projectId: string) {
   });
 }
 
-export async function getActiveProjectCounts(projectId: string) {
-  const [nodes, directions] = await prisma.$transaction([
+async function getActiveProjectSnapshot(projectId: string) {
+  const [nodes, directions, latestNode] = await prisma.$transaction([
     prisma.node.count({
       where: {
         projectId,
@@ -25,16 +25,33 @@ export async function getActiveProjectCounts(projectId: string) {
         archivedAt: null,
       },
     }),
+    prisma.node.findFirst({
+      where: {
+        projectId,
+        archivedAt: null,
+      },
+      orderBy: [
+        { contentUpdatedAt: 'desc' },
+        { nodeOrdinal: 'desc' },
+      ],
+      select: {
+        imageUrl: true,
+      },
+    }),
   ]);
 
-  return { nodes, directions };
+  return {
+    counts: { nodes, directions },
+    thumbnailUrl: latestNode?.imageUrl ?? null,
+  };
 }
 
 export async function mapProjectWithActiveCounts(project: PrismaProject) {
-  const counts = await getActiveProjectCounts(project.id);
+  const snapshot = await getActiveProjectSnapshot(project.id);
 
   return mapPrismaProjectToProject({
     ...project,
-    _count: counts,
+    thumbnailUrl: snapshot.thumbnailUrl,
+    _count: snapshot.counts,
   });
 }

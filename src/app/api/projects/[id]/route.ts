@@ -47,9 +47,8 @@ export async function PATCH(
 
   const name = readOptionalString(body, 'name');
   const description = readOptionalString(body, 'description', true);
-  const thumbnailUrl = readOptionalNullableString(body, 'thumbnailUrl', true);
 
-  if (name.isInvalid || description.isInvalid || thumbnailUrl.isInvalid) {
+  if (name.isInvalid || description.isInvalid) {
     return NextResponse.json(
       { error: 'Invalid project update payload.' },
       { status: 400 }
@@ -58,7 +57,6 @@ export async function PATCH(
 
   if (name.value !== undefined) data.name = name.value;
   if (description.value !== undefined) data.description = description.value;
-  if (thumbnailUrl.value !== undefined) data.thumbnailUrl = thumbnailUrl.value;
 
   for (const field of PROJECT_STRATEGY_FIELDS) {
     const parsed = readOptionalString(body, field, true);
@@ -158,27 +156,6 @@ function readOptionalString(
   const value = body[key];
   if (value === null && allowNullAsEmpty) {
     return { value: '', isInvalid: false };
-  }
-
-  if (typeof value !== 'string') {
-    return { value: undefined, isInvalid: true };
-  }
-
-  return { value, isInvalid: false };
-}
-
-function readOptionalNullableString(
-  body: Record<string, unknown>,
-  key: string,
-  allowNull: boolean = false
-) {
-  if (!(key in body)) {
-    return { value: undefined, isInvalid: false };
-  }
-
-  const value = body[key];
-  if (value === null && allowNull) {
-    return { value: null, isInvalid: false };
   }
 
   if (typeof value !== 'string') {

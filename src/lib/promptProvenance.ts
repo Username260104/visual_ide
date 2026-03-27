@@ -27,7 +27,7 @@ export function buildVariationUserIntent(options: {
 export function getPromptSourceLabel(promptSource: PromptSource | null | undefined) {
   switch (promptSource) {
     case 'legacy':
-      return '레거시 기록';
+      return '레거시 로그';
     case 'user-authored':
       return '사용자 직접 작성';
     case 'ai-improved':

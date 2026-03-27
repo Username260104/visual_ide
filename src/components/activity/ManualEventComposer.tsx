@@ -129,7 +129,7 @@ export function ManualEventComposer({
       entityType: 'node',
       entityId: node.id,
       action: 'feedback',
-      message: '피드백 기록 저장 중...',
+      message: '피드백 로그 저장 중...',
     });
 
     try {
@@ -154,13 +154,13 @@ export function ManualEventComposer({
         }),
       });
 
-      markSaveFeedbackSuccess(feedbackKey, '피드백을 기록했습니다.');
+      markSaveFeedbackSuccess(feedbackKey, '피드백 로그를 저장했습니다.');
       resetFeedbackForm();
       setDialogMode(null);
     } catch (submitError) {
       const message = getErrorMessage(
         submitError,
-        '피드백을 기록하지 못했습니다.'
+        '피드백 로그를 저장하지 못했습니다.'
       );
 
       setError(message);
@@ -190,7 +190,7 @@ export function ManualEventComposer({
       entityType: 'node',
       entityId: node.id,
       action: 'decision',
-      message: '의사결정 기록 저장 중...',
+      message: '의사결정 로그 저장 중...',
     });
 
     try {
@@ -218,13 +218,13 @@ export function ManualEventComposer({
         }),
       });
 
-      markSaveFeedbackSuccess(decisionKey, '의사결정을 기록했습니다.');
+      markSaveFeedbackSuccess(decisionKey, '의사결정 로그를 저장했습니다.');
       resetDecisionForm();
       setDialogMode(null);
     } catch (submitError) {
       const message = getErrorMessage(
         submitError,
-        '의사결정을 기록하지 못했습니다.'
+        '의사결정 로그를 저장하지 못했습니다.'
       );
 
       setError(message);
@@ -243,18 +243,6 @@ export function ManualEventComposer({
           backgroundColor: 'var(--bg-surface)',
         }}
       >
-        <div className="flex flex-col gap-1">
-          <h3
-            className="text-sm font-semibold"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            판단 기록
-          </h3>
-          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            선택 이유와 피드백을 현재 이미지에 연결해 남깁니다.
-          </p>
-        </div>
-
         <div className="flex gap-2">
           <button
             className="flex-1 rounded px-3 py-2 text-xs font-semibold"
@@ -267,7 +255,7 @@ export function ManualEventComposer({
               setDialogMode('feedback');
             }}
           >
-            피드백 기록
+            피드백 로그
           </button>
           <button
             className="flex-1 rounded px-3 py-2 text-xs font-semibold"
@@ -280,7 +268,7 @@ export function ManualEventComposer({
               setDialogMode('decision');
             }}
           >
-            의사결정 기록
+            의사결정 로그
           </button>
         </div>
       </section>
@@ -296,7 +284,7 @@ export function ManualEventComposer({
               className="text-base font-semibold"
               style={{ color: 'var(--text-primary)' }}
             >
-              피드백 기록
+              피드백 로그
             </h2>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               {getNodeSequenceLabel(node)}에 대한 피드백을 남깁니다.
@@ -386,7 +374,7 @@ export function ManualEventComposer({
               className="text-base font-semibold"
               style={{ color: 'var(--text-primary)' }}
             >
-              의사결정 기록
+              의사결정 로그
             </h2>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               {getNodeSequenceLabel(node)}에 대한 판단과 이유를 남깁니다.

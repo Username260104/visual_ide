@@ -5,6 +5,11 @@ import {
   type ActivityEventWriteInput,
 } from '@/lib/activityEvents';
 import { mapPrismaNodeToNodeData } from '@/lib/mappers';
+import {
+  getNodeContentState,
+  getPatchedNodeContentState,
+  hasNodeContentChange,
+} from '@/lib/nodeContent';
 import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
 import { prisma } from '@/lib/prisma';
 import { wouldCreateNodeCycle } from '@/lib/nodeTree';
@@ -29,7 +34,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
 
-  const body = await request.json();
+  const body = (await request.json()) as Record<string, unknown>;
   const data: Record<string, unknown> = {};
   const currentNode = await prisma.node.findFirst({
     where: {
@@ -128,8 +133,21 @@ export async function PATCH(
   if (body.status !== undefined) data.status = body.status;
   if (body.statusReason !== undefined) data.statusReason = body.statusReason;
   if (body.position !== undefined) {
-    data.positionX = body.position.x;
-    data.positionY = body.position.y;
+    const position = body.position as { x: number; y: number };
+    data.positionX = position.x;
+    data.positionY = position.y;
+  }
+
+  const currentNodeContent = getNodeContentState(currentNode);
+  const nextNodeContent = getPatchedNodeContentState(currentNodeContent, {
+    imageUrl: body.imageUrl as string | undefined,
+    prompt: body.prompt as string | null | undefined,
+    userIntent: body.userIntent as string | null | undefined,
+    resolvedPrompt: body.resolvedPrompt as string | null | undefined,
+  });
+
+  if (hasNodeContentChange(currentNodeContent, nextNodeContent)) {
+    data.contentUpdatedAt = new Date();
   }
 
   if (Object.keys(data).length === 0) {

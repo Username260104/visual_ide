@@ -1,6 +1,5 @@
 ﻿'use client';
 
-import { Settings2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
@@ -24,7 +23,7 @@ const SIDEBAR_TAB_LABELS: Record<SidebarTab, string> = {
   'image-bridge': '이미지 브릿지',
   branches: '브랜치',
   strategy: '전략',
-  activity: '기록',
+  activity: '로그',
   archive: '보관함',
   settings: '설정',
 };
@@ -34,13 +33,9 @@ export function Sidebar() {
   const activeSidebarTab = useUIStore((state) => state.activeSidebarTab);
   const branchFilter = useUIStore((state) => state.branchFilter);
   const saveFeedbackByKey = useUIStore((state) => state.saveFeedbackByKey);
-  const setActiveSidebarTab = useUIStore((state) => state.setActiveSidebarTab);
   const setBranchFilter = useUIStore((state) => state.setBranchFilter);
   const setDirectionDialogOpen = useUIStore(
     (state) => state.setDirectionDialogOpen
-  );
-  const setGenerateDialogOpen = useUIStore(
-    (state) => state.setGenerateDialogOpen
   );
   const nodes = useNodeStore((state) => state.nodes);
   const nodeProjectId = useNodeStore((state) => state.projectId);
@@ -132,33 +127,6 @@ export function Sidebar() {
       >
         프로젝트 목록
       </Link>
-
-      <div
-        className="shrink-0 border-b px-3 py-3"
-        style={{ borderColor: 'var(--border-default)' }}
-      >
-        <button
-          className="flex w-full items-start gap-3 rounded px-3 py-3 text-left transition-opacity hover:opacity-90"
-          style={{
-            backgroundColor: 'var(--accent-primary)',
-            color: 'var(--text-inverse)',
-          }}
-          onClick={() => setGenerateDialogOpen(true)}
-        >
-          <span
-            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded"
-            style={{ backgroundColor: 'rgba(255,255,255,0.16)' }}
-          >
-            <Sparkles className="h-4 w-4" />
-          </span>
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="text-sm font-semibold">이미지 생성</span>
-            <span className="mt-1 text-[11px]" style={{ opacity: 0.86 }}>
-              생성 결과는 먼저 검토함에 올라오고, 확인 후 캔버스에 반영됩니다.
-            </span>
-          </span>
-        </button>
-      </div>
 
       <div
         className="flex h-9 shrink-0 items-center justify-between px-4 text-xs font-semibold uppercase tracking-wider"
@@ -268,8 +236,8 @@ export function Sidebar() {
             <ActivityTimeline
               projectId={projectId}
               limit={12}
-              title="최근 기록"
-              emptyMessage="프로젝트 기록이 아직 없습니다."
+              title="로그"
+              emptyMessage="프로젝트 로그가 아직 없습니다."
               refreshKey={activityRefreshKey}
             />
           </div>
@@ -287,29 +255,6 @@ export function Sidebar() {
             />
           </div>
         )}
-      </div>
-
-      <div
-        className="shrink-0 border-t p-3"
-        style={{ borderColor: 'var(--border-default)' }}
-      >
-        <button
-          className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs font-semibold transition-opacity hover:opacity-90"
-          style={{
-            backgroundColor: activeSidebarTab === 'settings'
-              ? 'var(--bg-active)'
-              : 'transparent',
-            color: activeSidebarTab === 'settings'
-              ? 'var(--text-accent)'
-              : 'var(--text-secondary)',
-            border: '1px solid var(--border-default)',
-          }}
-          onClick={() => setActiveSidebarTab('settings')}
-          aria-current={activeSidebarTab === 'settings' ? 'page' : undefined}
-        >
-          <Settings2 className="h-3.5 w-3.5" />
-          설정
-        </button>
       </div>
 
       <DirectionDialog />

@@ -455,8 +455,8 @@ function StagingBatchCard({
       </div>
 
       <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-        선택한 후보만 노드로 생성됩니다. 나머지 후보는 이번 결과 묶음의 비교 기록에서
-        기각으로 기록되고 검토함에서 정리됩니다.
+        선택한 후보만 노드로 생성됩니다. 나머지 후보는 이번 결과 묶음의 비교 로그에서
+        기각으로 남고 검토함에서 정리됩니다.
       </p>
     </article>
   );
@@ -504,7 +504,7 @@ function AcceptBatchDialog({
           </h3>
           <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
             선택한 후보는 노드로 생성되고, 나머지 후보는 이번 결과 묶음에서 기각으로
-            기록됩니다.
+            남습니다.
           </p>
         </div>
         <button
@@ -749,5 +749,3 @@ function getSecondaryButtonStyle() {
     border: '1px solid var(--border-default)',
   };
 }
-
-

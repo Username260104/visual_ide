@@ -63,7 +63,7 @@ function buildActivityEventSummary(input: ActivityEventWriteInput) {
     case 'node-created':
       return `${nodeLabel} 생성`;
     case 'node-reparented':
-      return `${nodeLabel} 부모 변경`;
+      return `${nodeLabel} 상위 변경`;
     case 'node-status-changed': {
       const fromStatus = getStatusLabel(getString(payload, 'fromStatus'));
       const toStatus = getStatusLabel(getString(payload, 'toStatus'));
@@ -95,7 +95,7 @@ function buildActivityEventSummary(input: ActivityEventWriteInput) {
     case 'decision-recorded':
       return buildDecisionSummary(payload, nodeLabel);
     case 'comparison-recorded':
-      return '비교 기록';
+      return '비교 로그';
     case 'prompt-diff-summarized':
       return '프롬프트 변화 요약';
     case 'brief-updated':
@@ -119,7 +119,7 @@ function buildFeedbackSummary(
     return `${sourceLabel} 피드백: ${text}`;
   }
 
-  return `${sourceLabel} 피드백 기록`;
+  return `${sourceLabel} 피드백 로그`;
 }
 
 function buildDecisionSummary(
@@ -136,7 +136,7 @@ function buildDecisionSummary(
     return `${nodeLabel} ${decisionLabel}`;
   }
 
-  return `${nodeLabel} 의사결정 기록`;
+  return `${nodeLabel} 의사결정 로그`;
 }
 
 function asObject(
