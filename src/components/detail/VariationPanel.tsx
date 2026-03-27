@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   StrategyContextCard,
   type StrategyContextItem,
@@ -19,6 +19,7 @@ import {
 import type { NodeData } from '@/lib/types';
 import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
+import { useGenerationSettingsStore } from '@/stores/generationSettingsStore';
 import { useStagingStore } from '@/stores/stagingStore';
 
 interface VariationPanelProps {
@@ -92,6 +93,16 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
   const [status, setStatus] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const defaultModelId = useGenerationSettingsStore(
+    (state) => state.defaultModelId
+  );
+  const defaultAspectRatio = useGenerationSettingsStore(
+    (state) => state.defaultAspectRatio
+  );
+  const defaultOutputCount = useGenerationSettingsStore(
+    (state) => state.defaultOutputCount
+  );
+
   const projectId = useNodeStore((state) => state.projectId);
   const stagingBatches = useStagingStore((state) => state.batches);
   const stageBatch = useStagingStore((state) => state.stageBatch);
@@ -144,6 +155,24 @@ export function VariationPanel({ node, onBack }: VariationPanelProps) {
     ],
     [project]
   );
+
+  useEffect(() => {
+    const nextModel = getModelDefinition(defaultModelId);
+    const nextRatios = getGenerationAspectRatios(nextModel);
+    const nextOutputOptions = getSelectableOutputCounts(nextModel);
+
+    setModelId(nextModel.id);
+    setAspectRatio(
+      nextRatios.includes(defaultAspectRatio)
+        ? defaultAspectRatio
+        : nextRatios[0] ?? '1:1'
+    );
+    setNumOutputs(
+      nextOutputOptions.includes(defaultOutputCount)
+        ? defaultOutputCount
+        : nextOutputOptions.at(-1) ?? 1
+    );
+  }, [defaultAspectRatio, defaultModelId, defaultOutputCount, node.id]);
 
   const toggleTag = (
     tag: string,
@@ -533,6 +562,9 @@ function TagSection({
 function getModelDescription(modelId: string) {
   return MODEL_DESCRIPTIONS[modelId] ?? '기본 모델';
 }
+
+
+
 
 
 

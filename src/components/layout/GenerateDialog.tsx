@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   StrategyContextCard,
   type StrategyContextItem,
@@ -19,6 +19,7 @@ import {
   getSelectableOutputCounts,
 } from '@/lib/imageGeneration';
 import { useNodeStore } from '@/stores/nodeStore';
+import { useGenerationSettingsStore } from '@/stores/generationSettingsStore';
 import { useStagingStore } from '@/stores/stagingStore';
 import { useUIStore } from '@/stores/uiStore';
 
@@ -93,6 +94,16 @@ export function GenerateDialog() {
   const [status, setStatus] = useState('');
   const [isImproving, setIsImproving] = useState(false);
 
+  const defaultModelId = useGenerationSettingsStore(
+    (state) => state.defaultModelId
+  );
+  const defaultAspectRatio = useGenerationSettingsStore(
+    (state) => state.defaultAspectRatio
+  );
+  const defaultOutputCount = useGenerationSettingsStore(
+    (state) => state.defaultOutputCount
+  );
+
   const projectId = useNodeStore((state) => state.projectId);
   const stagingBatches = useStagingStore((state) => state.batches);
   const stageBatch = useStagingStore((state) => state.stageBatch);
@@ -137,6 +148,35 @@ export function GenerateDialog() {
     ],
     [project]
   );
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const nextModel = getModelDefinition(defaultModelId);
+    const nextRatios = getGenerationAspectRatios(nextModel, {
+      includeCustom: true,
+    });
+    const nextOutputOptions = getSelectableOutputCounts(nextModel);
+
+    setModelId(nextModel.id);
+    setAspectRatio(
+      nextRatios.includes(defaultAspectRatio)
+        ? defaultAspectRatio
+        : getDefaultAspectRatio(nextModel, { includeCustom: true })
+    );
+    setNumOutputs(
+      nextOutputOptions.includes(defaultOutputCount)
+        ? defaultOutputCount
+        : nextOutputOptions.at(-1) ?? 1
+    );
+    setCustomWidth(1024);
+    setCustomHeight(1024);
+    setGuidance(3);
+    setSteps(nextModel.defaultSteps ?? 28);
+    setResolution(getDefaultResolution(nextModel) ?? '');
+  }, [defaultAspectRatio, defaultModelId, defaultOutputCount, isOpen]);
 
   if (!isOpen) {
     return null;
@@ -700,4 +740,7 @@ function getAspectRatioPreview(ratio: string) {
     height: Math.round((height / maxSide) * 16),
   };
 }
+
+
+
 

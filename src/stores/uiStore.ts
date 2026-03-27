@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 
 export interface PendingDrop {
   imageUrls: string[];
@@ -15,8 +15,7 @@ export type SidebarTab =
   | 'branches'
   | 'strategy'
   | 'activity'
-  | 'archive'
-  | 'settings';
+  | 'archive';
 
 export type SaveFeedbackEntityType = 'node' | 'direction' | 'project' | 'staging';
 
@@ -240,3 +239,5 @@ export const useUIStore = create<UIStore>((set) => ({
     });
   },
 }));
+
+

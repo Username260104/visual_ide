@@ -1,13 +1,21 @@
 ﻿'use client';
 
-import { Settings2, Sparkles } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronUp, Settings2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
+import { MODELS } from '@/lib/constants';
+import {
+  getDefaultAspectRatio,
+  getGenerationAspectRatios,
+  getModelDefinition,
+  getSelectableOutputCounts,
+} from '@/lib/imageGeneration';
 import { DestructiveActionDialog } from '@/components/ui/DestructiveActionDialog';
 import { useDirectionStore } from '@/stores/directionStore';
+import { useGenerationSettingsStore } from '@/stores/generationSettingsStore';
 import { useNodeStore } from '@/stores/nodeStore';
-import { SidebarTab, useUIStore } from '@/stores/uiStore';
+import { type BranchFilter, type SidebarTab, useUIStore } from '@/stores/uiStore';
 import { ArchiveSettingsPanel } from './ArchiveSettingsPanel';
 import { DirectionDialog } from './DirectionDialog';
 import { StrategySettingsPanel } from './StrategySettingsPanel';
@@ -18,7 +26,6 @@ const SIDEBAR_TAB_LABELS: Record<SidebarTab, string> = {
   strategy: '전략',
   activity: '기록',
   archive: '보관함',
-  settings: '설정',
 };
 
 export function Sidebar() {
@@ -26,7 +33,6 @@ export function Sidebar() {
   const activeSidebarTab = useUIStore((state) => state.activeSidebarTab);
   const branchFilter = useUIStore((state) => state.branchFilter);
   const saveFeedbackByKey = useUIStore((state) => state.saveFeedbackByKey);
-  const setActiveSidebarTab = useUIStore((state) => state.setActiveSidebarTab);
   const setBranchFilter = useUIStore((state) => state.setBranchFilter);
   const setDirectionDialogOpen = useUIStore(
     (state) => state.setDirectionDialogOpen
@@ -45,6 +51,7 @@ export function Sidebar() {
 
   const [pendingDirectionId, setPendingDirectionId] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
 
   const nodeList = useMemo(() => Object.values(nodes), [nodes]);
   const directionList = useMemo(() => Object.values(directions), [directions]);
@@ -64,6 +71,10 @@ export function Sidebar() {
         return counts;
       }, {}),
     [nodeList]
+  );
+  const activeBranchFilterLabel = useMemo(
+    () => getBranchFilterLabel(branchFilter, directions),
+    [branchFilter, directions]
   );
 
   const nodeCount = nodeList.length;
@@ -264,12 +275,6 @@ export function Sidebar() {
         )}
 
         {activeSidebarTab === 'archive' && <ArchiveSettingsPanel />}
-
-        {activeSidebarTab === 'settings' && (
-          <div className="flex flex-col gap-3 p-3">
-            <SettingsPanel />
-          </div>
-        )}
       </div>
 
       <div
@@ -277,23 +282,40 @@ export function Sidebar() {
         style={{ borderColor: 'var(--border-default)' }}
       >
         <button
-          className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs font-semibold transition-opacity hover:opacity-90"
+          className="flex w-full items-center justify-between gap-2 rounded px-3 py-2 text-left text-xs font-semibold transition-opacity hover:opacity-90"
           style={{
-            backgroundColor:
-              activeSidebarTab === 'settings'
-                ? 'var(--bg-active)'
-                : 'transparent',
-            color:
-              activeSidebarTab === 'settings'
-                ? 'var(--text-accent)'
-                : 'var(--text-secondary)',
+            backgroundColor: isSettingsPanelOpen
+              ? 'var(--bg-active)'
+              : 'transparent',
+            color: isSettingsPanelOpen
+              ? 'var(--text-accent)'
+              : 'var(--text-secondary)',
             border: '1px solid var(--border-default)',
           }}
-          onClick={() => setActiveSidebarTab('settings')}
+          onClick={() => setIsSettingsPanelOpen((current) => !current)}
+          aria-expanded={isSettingsPanelOpen}
         >
-          <Settings2 className="h-3.5 w-3.5" />
-          설정
+          <span className="flex items-center gap-2">
+            <Settings2 className="h-3.5 w-3.5" />
+            설정
+          </span>
+          {isSettingsPanelOpen ? (
+            <ChevronDown className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronUp className="h-3.5 w-3.5" />
+          )}
         </button>
+
+        {isSettingsPanelOpen && (
+          <div className="mt-3 max-h-[320px] overflow-y-auto pr-1">
+            <SettingsPanel
+              projectId={projectId}
+              nodeCount={nodeCount}
+              branchCount={directionList.length}
+              activeBranchFilterLabel={activeBranchFilterLabel}
+            />
+          </div>
+        )}
       </div>
 
       <DirectionDialog />
@@ -388,6 +410,243 @@ function BranchFilterRow({
   );
 }
 
+function SettingsPanel({
+  projectId,
+  nodeCount,
+  branchCount,
+  activeBranchFilterLabel,
+}: {
+  projectId: string | null;
+  nodeCount: number;
+  branchCount: number;
+  activeBranchFilterLabel: string;
+}) {
+  const defaultModelId = useGenerationSettingsStore(
+    (state) => state.defaultModelId
+  );
+  const defaultAspectRatio = useGenerationSettingsStore(
+    (state) => state.defaultAspectRatio
+  );
+  const defaultOutputCount = useGenerationSettingsStore(
+    (state) => state.defaultOutputCount
+  );
+  const setDefaultModelId = useGenerationSettingsStore(
+    (state) => state.setDefaultModelId
+  );
+  const setDefaultAspectRatio = useGenerationSettingsStore(
+    (state) => state.setDefaultAspectRatio
+  );
+  const setDefaultOutputCount = useGenerationSettingsStore(
+    (state) => state.setDefaultOutputCount
+  );
+  const resetDefaults = useGenerationSettingsStore((state) => state.resetDefaults);
+
+  const model = useMemo(
+    () => getModelDefinition(defaultModelId),
+    [defaultModelId]
+  );
+  const ratioOptions = useMemo(
+    () => getGenerationAspectRatios(model, { includeCustom: true }),
+    [model]
+  );
+  const outputOptions = useMemo(() => getSelectableOutputCounts(model), [model]);
+
+  useEffect(() => {
+    if (!ratioOptions.includes(defaultAspectRatio)) {
+      setDefaultAspectRatio(getDefaultAspectRatio(model, { includeCustom: true }));
+    }
+
+    if (!outputOptions.includes(defaultOutputCount)) {
+      setDefaultOutputCount(outputOptions.at(-1) ?? 1);
+    }
+  }, [
+    defaultAspectRatio,
+    defaultOutputCount,
+    model,
+    outputOptions,
+    ratioOptions,
+    setDefaultAspectRatio,
+    setDefaultOutputCount,
+  ]);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <section
+        className="rounded border p-3"
+        style={{
+          borderColor: 'var(--border-default)',
+          backgroundColor: 'var(--bg-surface)',
+        }}
+      >
+        <h3
+          className="text-sm font-semibold"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          프로젝트 정보
+        </h3>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+          <InfoTile label="프로젝트" value={projectId ? '연결됨' : '없음'} />
+          <InfoTile label="현재 필터" value={activeBranchFilterLabel} />
+          <InfoTile label="노드" value={`${nodeCount}개`} />
+          <InfoTile label="브랜치" value={`${branchCount}개`} />
+        </div>
+      </section>
+
+      <section
+        className="rounded border p-3"
+        style={{
+          borderColor: 'var(--border-default)',
+          backgroundColor: 'var(--bg-surface)',
+        }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3
+              className="text-sm font-semibold"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              생성 기본값
+            </h3>
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+              이미지 생성과 변형 만들기에서 먼저 채워지는 기본값입니다.
+            </p>
+          </div>
+          <button
+            className="rounded px-2 py-1 text-[10px] font-semibold transition-opacity hover:opacity-90"
+            style={{
+              backgroundColor: 'var(--bg-active)',
+              color: 'var(--text-accent)',
+            }}
+            onClick={() => resetDefaults()}
+          >
+            초기화
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3">
+          <SettingsField label="기본 모델">
+            <select
+              value={defaultModelId}
+              onChange={(event) => setDefaultModelId(event.target.value)}
+              className="w-full rounded px-3 py-2 text-xs"
+              style={{
+                backgroundColor: 'var(--bg-input)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-default)',
+              }}
+            >
+              {MODELS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </SettingsField>
+
+          <SettingsField label="기본 비율">
+            <div className="flex flex-wrap gap-1">
+              {ratioOptions.map((ratio) => {
+                const selected = defaultAspectRatio === ratio;
+
+                return (
+                  <button
+                    key={ratio}
+                    className="rounded px-2 py-1 text-[11px] transition-opacity hover:opacity-90"
+                    style={{
+                      backgroundColor: selected
+                        ? 'var(--accent-primary)'
+                        : 'var(--bg-active)',
+                      color: selected
+                        ? 'var(--text-inverse)'
+                        : 'var(--text-secondary)',
+                    }}
+                    onClick={() => setDefaultAspectRatio(ratio)}
+                  >
+                    {ratio === 'custom' ? '직접 입력' : ratio}
+                  </button>
+                );
+              })}
+            </div>
+          </SettingsField>
+
+          <SettingsField label="기본 수량">
+            <div className="flex flex-wrap gap-1">
+              {outputOptions.map((count) => {
+                const selected = defaultOutputCount === count;
+
+                return (
+                  <button
+                    key={count}
+                    className="rounded px-2 py-1 text-[11px] transition-opacity hover:opacity-90"
+                    style={{
+                      backgroundColor: selected
+                        ? 'var(--accent-primary)'
+                        : 'var(--bg-active)',
+                      color: selected
+                        ? 'var(--text-inverse)'
+                        : 'var(--text-secondary)',
+                    }}
+                    onClick={() => setDefaultOutputCount(count)}
+                  >
+                    {count}개
+                  </button>
+                );
+              })}
+            </div>
+          </SettingsField>
+        </div>
+      </section>
+
+      <SidebarPlaceholderPanel
+        title="연결과 내보내기"
+        description="이미지 브릿지와 외부 워크플로 연결 옵션은 이 하단 유틸리티 영역에 이어 붙이는 방향이 자연스럽습니다."
+      />
+    </div>
+  );
+}
+
+function InfoTile({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      className="rounded px-3 py-2"
+      style={{ backgroundColor: 'var(--bg-active)' }}
+    >
+      <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+        {label}
+      </div>
+      <div className="mt-1 text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function SettingsField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label
+        className="text-[11px] font-semibold uppercase tracking-wider"
+        style={{ color: 'var(--text-muted)' }}
+      >
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
 function SidebarPlaceholderPanel({
   title,
   description,
@@ -416,29 +675,18 @@ function SidebarPlaceholderPanel({
   );
 }
 
-function SettingsPanel() {
-  return (
-    <div className="flex flex-col gap-3">
-      <SidebarPlaceholderPanel
-        title="설정"
-        description="설정은 작업 탭이 아니라 도구 기본값을 다루는 유틸리티 영역으로 분리합니다."
-      />
-
-      <SidebarPlaceholderPanel
-        title="프로젝트 정보"
-        description="프로젝트 이름, 설명, 대표 썸네일 같은 메타 정보는 여기에서 다루는 방향이 적절합니다."
-      />
-
-      <SidebarPlaceholderPanel
-        title="생성 기본값"
-        description="기본 모델, 비율, 생성 수량처럼 반복 작업에 영향을 주는 기본값을 다음 단계에서 연결합니다."
-      />
-
-      <SidebarPlaceholderPanel
-        title="연결과 내보내기"
-        description="이미지 브릿지와 외부 워크플로 연결 옵션은 이 영역과 자연스럽게 이어지도록 정리합니다."
-      />
-    </div>
-  );
+function getBranchFilterLabel(
+  branchFilter: BranchFilter,
+  directions: Record<string, { name: string }>
+) {
+  switch (branchFilter.kind) {
+    case 'unclassified':
+      return '미분류';
+    case 'direction':
+      return directions[branchFilter.directionId]?.name ?? '선택 브랜치';
+    case 'all':
+    default:
+      return '전체';
+  }
 }
 
