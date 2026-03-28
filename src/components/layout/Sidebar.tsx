@@ -232,13 +232,15 @@ export function Sidebar() {
         )}
 
         {activeSidebarTab === 'activity' && (
-          <div className="p-3">
+          <div className="flex h-full min-h-0 flex-col p-3">
             <ActivityTimeline
               projectId={projectId}
-              limit={12}
+              limit={40}
               title="로그"
               emptyMessage="프로젝트 로그가 아직 없습니다."
               refreshKey={activityRefreshKey}
+              paginate
+              fillHeight
             />
           </div>
         )}
@@ -628,4 +630,6 @@ function getBranchFilterLabel(
       return '전체';
   }
 }
+
+
 

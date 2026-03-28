@@ -1,13 +1,15 @@
 'use client';
 
 import { Sparkles } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactFlow, {
   applyNodeChanges,
   Background,
   Controls,
   Panel,
   ReactFlowProvider,
+  useNodesInitialized,
+  useReactFlow,
   type Edge,
   type Node,
   type NodeChange,
@@ -33,7 +35,15 @@ const nodeTypes: NodeTypes = {
   imageNode: ImageNode,
 };
 
+const INITIAL_FIT_VIEW_OPTIONS = {
+  padding: 0.2,
+  duration: 0,
+  maxZoom: 1.2,
+};
+
 function NodeGraphInner() {
+  const { fitView, getViewport } = useReactFlow();
+  const nodesInitialized = useNodesInitialized();
   const setZoomLevel = useUIStore((state) => state.setZoomLevel);
   const selectNode = useUIStore((state) => state.selectNode);
   const setDetailMode = useUIStore((state) => state.setDetailMode);
@@ -43,10 +53,13 @@ function NodeGraphInner() {
   const branchFilter = useUIStore((state) => state.branchFilter);
   const selectedNodeId = useUIStore((state) => state.selectedNodeId);
   const nodesById = useNodeStore((state) => state.nodes);
+  const projectId = useNodeStore((state) => state.projectId);
   const deleteNode = useNodeStore((state) => state.deleteNode);
   const updateNode = useNodeStore((state) => state.updateNode);
   const directions = useDirectionStore((state) => state.directions);
   const { isDragging, onDragOver, onDragLeave, onDrop } = useImageDrop();
+  const initialFitProjectIdRef = useRef<string | null>(null);
+  const initialFitFrameRef = useRef<number | null>(null);
 
   const nodeList = useMemo(() => Object.values(nodesById), [nodesById]);
   const filteredNodeList = useMemo(() => {
@@ -86,6 +99,90 @@ function NodeGraphInner() {
       syncFlowNodes(current, filteredNodeList, selectedNodeId)
     );
   }, [filteredNodeList, selectedNodeId]);
+
+  useEffect(() => {
+    initialFitProjectIdRef.current = null;
+
+    if (initialFitFrameRef.current !== null) {
+      cancelAnimationFrame(initialFitFrameRef.current);
+      initialFitFrameRef.current = null;
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    return () => {
+      if (initialFitFrameRef.current !== null) {
+        cancelAnimationFrame(initialFitFrameRef.current);
+        initialFitFrameRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!projectId || nodeList.length > 0) {
+      return;
+    }
+
+    if (initialFitProjectIdRef.current === projectId) {
+      return;
+    }
+
+    initialFitProjectIdRef.current = projectId;
+    setZoomLevel(1);
+  }, [nodeList.length, projectId, setZoomLevel]);
+
+  useEffect(() => {
+    if (
+      !projectId ||
+      branchFilter.kind !== 'all' ||
+      nodeList.length === 0 ||
+      rfNodes.length === 0 ||
+      !nodesInitialized
+    ) {
+      return;
+    }
+
+    if (initialFitProjectIdRef.current === projectId) {
+      return;
+    }
+
+    initialFitProjectIdRef.current = projectId;
+    let cancelled = false;
+
+    initialFitFrameRef.current = requestAnimationFrame(() => {
+      initialFitFrameRef.current = null;
+
+      if (cancelled) {
+        return;
+      }
+
+      void Promise.resolve(fitView(INITIAL_FIT_VIEW_OPTIONS)).then(() => {
+        if (cancelled) {
+          return;
+        }
+
+        setZoomLevel(getViewport().zoom);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+
+      if (initialFitFrameRef.current !== null) {
+        cancelAnimationFrame(initialFitFrameRef.current);
+        initialFitFrameRef.current = null;
+      }
+    };
+  }, [
+    branchFilter.kind,
+    fitView,
+    getViewport,
+    nodeList.length,
+    nodesInitialized,
+    projectId,
+    rfNodes.length,
+    setZoomLevel,
+  ]);
 
   useEffect(() => {
     if (!contextMenu) {
@@ -348,6 +445,7 @@ function NodeGraphInner() {
         onNodeDragStart={handleNodeDragStart}
         onNodeDragStop={handleNodeDragStop}
         fitView={false}
+        maxZoom={3}
         proOptions={{ hideAttribution: true }}
         selectNodesOnDrag={false}
       >

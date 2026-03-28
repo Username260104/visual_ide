@@ -1,8 +1,12 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchJson } from '@/lib/clientApi';
-import type { ActivityEventData } from '@/lib/types';
+import type {
+  ActivityEventCursor,
+  ActivityEventData,
+  ActivityEventPage,
+} from '@/lib/types';
 import { useUIStore } from '@/stores/uiStore';
 
 interface ActivityTimelineProps {
@@ -14,6 +18,8 @@ interface ActivityTimelineProps {
   directionId?: string | null;
   refreshKey?: string;
   compact?: boolean;
+  paginate?: boolean;
+  fillHeight?: boolean;
 }
 
 export function ActivityTimeline({
@@ -25,13 +31,21 @@ export function ActivityTimeline({
   directionId = null,
   refreshKey = '',
   compact = false,
+  paginate = false,
+  fillHeight = false,
 }: ActivityTimelineProps) {
   const selectNode = useUIStore((state) => state.selectNode);
   const [events, setEvents] = useState<ActivityEventData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState('');
+  const [loadMoreError, setLoadMoreError] = useState('');
+  const [nextCursor, setNextCursor] = useState<ActivityEventCursor | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const eventsUrl = useMemo(() => {
+  const baseQuery = useMemo(() => {
     if (!projectId) {
       return null;
     }
@@ -47,24 +61,67 @@ export function ActivityTimeline({
       params.set('directionId', directionId);
     }
 
-    return `/api/projects/${projectId}/events?${params.toString()}`;
-  }, [directionId, limit, nodeId, projectId]);
+    if (paginate) {
+      params.set('paginate', 'true');
+    }
 
-  const loadEvents = useCallback(async () => {
-    if (!eventsUrl) {
-      setEvents([]);
-      setError('');
-      setIsLoading(false);
+    return params.toString();
+  }, [directionId, limit, nodeId, paginate, projectId]);
+
+  const buildEventsUrl = useCallback(
+    (cursor: ActivityEventCursor | null = null) => {
+      if (!projectId || !baseQuery) {
+        return null;
+      }
+
+      const params = new URLSearchParams(baseQuery);
+
+      if (cursor) {
+        params.set('cursorCreatedAt', String(cursor.createdAt));
+        params.set('cursorId', cursor.id);
+      }
+
+      return `/api/projects/${projectId}/events?${params.toString()}`;
+    },
+    [baseQuery, projectId]
+  );
+
+  const resetTimeline = useCallback(() => {
+    setEvents([]);
+    setError('');
+    setLoadMoreError('');
+    setIsLoading(false);
+    setIsLoadingMore(false);
+    setNextCursor(null);
+    setHasMore(false);
+  }, []);
+
+  const loadInitialEvents = useCallback(async () => {
+    const url = buildEventsUrl();
+
+    if (!url) {
+      resetTimeline();
       return;
     }
 
     setIsLoading(true);
     setError('');
+    setLoadMoreError('');
+    setNextCursor(null);
+    setHasMore(false);
 
     try {
-      const nextEvents = await fetchJson<ActivityEventData[]>(eventsUrl);
-      setEvents(nextEvents);
+      if (paginate) {
+        const page = await fetchJson<ActivityEventPage>(url);
+        setEvents(page.events);
+        setNextCursor(page.nextCursor);
+        setHasMore(page.hasMore);
+      } else {
+        const nextEvents = await fetchJson<ActivityEventData[]>(url);
+        setEvents(nextEvents);
+      }
     } catch (loadError) {
+      setEvents([]);
       setError(
         loadError instanceof Error
           ? loadError.message
@@ -73,15 +130,71 @@ export function ActivityTimeline({
     } finally {
       setIsLoading(false);
     }
-  }, [eventsUrl]);
+  }, [buildEventsUrl, paginate, resetTimeline]);
+
+  const loadMoreEvents = useCallback(async () => {
+    if (!paginate || !nextCursor || isLoadingMore) {
+      return;
+    }
+
+    const url = buildEventsUrl(nextCursor);
+    if (!url) {
+      return;
+    }
+
+    setIsLoadingMore(true);
+    setLoadMoreError('');
+
+    try {
+      const page = await fetchJson<ActivityEventPage>(url);
+      setEvents((previous) => [...previous, ...page.events]);
+      setNextCursor(page.nextCursor);
+      setHasMore(page.hasMore);
+    } catch (loadError) {
+      setLoadMoreError(
+        loadError instanceof Error
+          ? loadError.message
+          : '이전 로그를 더 불러오지 못했습니다.'
+      );
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [buildEventsUrl, isLoadingMore, nextCursor, paginate]);
 
   useEffect(() => {
-    void loadEvents();
-  }, [loadEvents, refreshKey]);
+    void loadInitialEvents();
+  }, [loadInitialEvents, refreshKey]);
+
+  useEffect(() => {
+    if (!paginate || !hasMore || isLoadingMore || !loadMoreRef.current) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadMoreEvents();
+        }
+      },
+      {
+        root: fillHeight ? scrollViewportRef.current : null,
+        rootMargin: '120px 0px',
+      }
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [fillHeight, hasMore, isLoadingMore, loadMoreEvents, paginate]);
+
+  const showLoadMore =
+    paginate && events.length > 0 && (hasMore || isLoadingMore || Boolean(loadMoreError));
 
   return (
     <section
-      className={`rounded border ${compact ? 'p-3' : 'p-0'}`}
+      className={`rounded border ${compact ? 'p-3' : 'p-0'} ${
+        fillHeight ? 'flex h-full min-h-0 flex-col overflow-hidden' : ''
+      }`}
       style={{
         borderColor: 'var(--border-default)',
         backgroundColor: 'var(--bg-surface)',
@@ -100,14 +213,17 @@ export function ActivityTimeline({
         <button
           className="text-[11px] font-semibold transition-opacity hover:opacity-80"
           style={{ color: 'var(--text-accent)' }}
-          onClick={() => void loadEvents()}
+          onClick={() => void loadInitialEvents()}
           disabled={isLoading}
         >
           {isLoading ? '불러오는 중...' : '새로고침'}
         </button>
       </div>
 
-      <div className={compact ? 'flex flex-col gap-2' : 'flex flex-col'}>
+      <div
+        ref={fillHeight ? scrollViewportRef : undefined}
+        className={getTimelineBodyClassName(compact, fillHeight)}
+      >
         {isLoading && events.length === 0 ? (
           <p className={getMessageClassName(compact)} style={{ color: 'var(--text-muted)' }}>
             로그를 불러오는 중입니다.
@@ -174,6 +290,36 @@ export function ActivityTimeline({
             );
           })
         )}
+
+        {showLoadMore && (
+          <div
+            ref={loadMoreRef}
+            className={compact ? 'pt-1' : 'border-t px-3 py-2'}
+            style={compact ? undefined : { borderColor: 'var(--border-default)' }}
+          >
+            <button
+              className="w-full rounded px-2 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+              style={{
+                backgroundColor: 'var(--bg-active)',
+                color: 'var(--text-accent)',
+                border: '1px solid var(--border-default)',
+              }}
+              onClick={() => void loadMoreEvents()}
+              disabled={isLoadingMore || !hasMore}
+            >
+              {loadMoreError
+                ? '이전 로그 다시 불러오기'
+                : isLoadingMore
+                  ? '이전 로그 불러오는 중...'
+                  : '이전 로그 더 보기'}
+            </button>
+            {loadMoreError && (
+              <p className="mt-2 text-[10px]" style={{ color: 'var(--status-dropped)' }}>
+                {loadMoreError}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -181,6 +327,16 @@ export function ActivityTimeline({
 
 function getMessageClassName(compact: boolean) {
   return compact ? 'rounded px-2 py-2 text-xs' : 'px-3 py-4 text-xs';
+}
+
+function getTimelineBodyClassName(compact: boolean, fillHeight: boolean) {
+  const baseClassName = compact ? 'flex flex-col gap-2' : 'flex flex-col';
+
+  if (!fillHeight) {
+    return baseClassName;
+  }
+
+  return `min-h-0 flex-1 overflow-y-auto ${baseClassName}`;
 }
 
 function formatEventTimestamp(timestamp: number) {

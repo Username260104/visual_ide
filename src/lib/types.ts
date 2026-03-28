@@ -132,6 +132,17 @@ export interface ActivityEventData {
   createdAt: number;
 }
 
+export interface ActivityEventCursor {
+  id: string;
+  createdAt: number;
+}
+
+export interface ActivityEventPage {
+  events: ActivityEventData[];
+  nextCursor: ActivityEventCursor | null;
+  hasMore: boolean;
+}
+
 export interface StagingCandidate {
   id: string;
   imageUrl: string;

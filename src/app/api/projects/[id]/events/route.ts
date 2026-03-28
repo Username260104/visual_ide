@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { createActivityEvent } from '@/lib/activityEvents';
 import { findActiveProject } from '@/lib/activeRecords';
 import { mapPrismaActivityEventToActivityEventData } from '@/lib/mappers';
@@ -40,12 +40,51 @@ export async function GET(
   const directionId = request.nextUrl.searchParams.get('directionId');
   const kind = request.nextUrl.searchParams.get('kind');
   const limit = parseLimit(request.nextUrl.searchParams.get('limit'));
+  const paginate = request.nextUrl.searchParams.get('paginate') === 'true';
+  const cursor = parseCursor(
+    request.nextUrl.searchParams.get('cursorCreatedAt'),
+    request.nextUrl.searchParams.get('cursorId')
+  );
 
   const baseWhere = {
     projectId: params.id,
     ...(directionId ? { directionId } : {}),
     ...(kind ? { kind } : {}),
   };
+
+  if (paginate && !nodeId) {
+    const pageSize = limit;
+    const cursorDate = cursor ? new Date(cursor.createdAt) : null;
+    const cursorFilter =
+      cursor && cursorDate
+        ? {
+            OR: [
+              { createdAt: { lt: cursorDate } },
+              { createdAt: cursorDate, id: { lt: cursor.id } },
+            ],
+          }
+        : {};
+    const pagedEvents = await prisma.activityEvent.findMany({
+      where: {
+        ...baseWhere,
+        ...cursorFilter,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: pageSize + 1,
+    });
+
+    const hasMore = pagedEvents.length > pageSize;
+    const pageEvents = hasMore ? pagedEvents.slice(0, pageSize) : pagedEvents;
+
+    return NextResponse.json({
+      events: pageEvents.map(mapPrismaActivityEventToActivityEventData),
+      nextCursor:
+        hasMore && pageEvents.length > 0
+          ? toActivityEventCursor(pageEvents[pageEvents.length - 1])
+          : null,
+      hasMore,
+    });
+  }
 
   const events = nodeId
     ? (
@@ -161,6 +200,28 @@ function parseLimit(limitValue: string | null) {
   }
 
   return Math.min(parsed, MAX_LIMIT);
+}
+
+function parseCursor(createdAtValue: string | null, idValue: string | null) {
+  if (!createdAtValue || !idValue) {
+    return null;
+  }
+
+  const createdAt = Number.parseInt(createdAtValue, 10);
+  const id = idValue.trim().slice(0, 80);
+
+  if (!Number.isFinite(createdAt) || createdAt <= 0 || !id) {
+    return null;
+  }
+
+  return { createdAt, id };
+}
+
+function toActivityEventCursor(event: { id: string; createdAt: Date }) {
+  return {
+    id: event.id,
+    createdAt: event.createdAt.getTime(),
+  };
 }
 
 function parseManualEventBody(body: unknown):
@@ -438,4 +499,5 @@ function withPrimaryNode(
 
   return Array.from(new Set(all));
 }
+
 
