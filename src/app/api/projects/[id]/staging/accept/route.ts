@@ -14,6 +14,7 @@ import type {
   PromptSource,
   StagingCandidateStatus,
   StagingSourceKind,
+  VariationEditMode,
 } from '@/lib/types';
 
 const MAX_CANDIDATES = 20;
@@ -229,6 +230,9 @@ export async function POST(
           aspectRatio: parsed.value.batch.aspectRatio,
           width: parsed.value.batch.width,
           height: parsed.value.batch.height,
+          variationMode: parsed.value.batch.variationMode,
+          sourceImageUrl: parsed.value.batch.sourceImageUrl,
+          maskImageUrl: parsed.value.batch.maskImageUrl,
           intentTags: parsed.value.batch.intentTags,
           changeTags: parsed.value.batch.changeTags,
           note: parsed.value.batch.note,
@@ -303,6 +307,9 @@ interface ParsedBatch {
   aspectRatio: string | null;
   width: number | null;
   height: number | null;
+  variationMode: VariationEditMode | null;
+  sourceImageUrl: string | null;
+  maskImageUrl: string | null;
   intentTags: string[];
   changeTags: string[];
   note: string | null;
@@ -419,6 +426,9 @@ function parseBatch(batch: Record<string, unknown>):
       aspectRatio: getOptionalString(batch, 'aspectRatio', 40),
       width: getOptionalNumber(batch, 'width'),
       height: getOptionalNumber(batch, 'height'),
+      variationMode: getVariationMode(batch),
+      sourceImageUrl: getOptionalString(batch, 'sourceImageUrl', 4000),
+      maskImageUrl: getOptionalString(batch, 'maskImageUrl', 4000),
       intentTags: sanitizeStringArray(getArray(batch, 'intentTags'), MAX_TAGS, 80),
       changeTags: sanitizeStringArray(getArray(batch, 'changeTags'), MAX_TAGS, 80),
       note: getOptionalString(batch, 'note', 4000),
@@ -536,6 +546,15 @@ function getPromptSource(body: Record<string, unknown>) {
 function getCandidateStatus(body: Record<string, unknown>) {
   const value = body.status;
   return value === 'staged' || value === 'accepted' || value === 'discarded'
+    ? value
+    : null;
+}
+
+function getVariationMode(body: Record<string, unknown>) {
+  const value = body.variationMode;
+  return value === 'prompt-only' ||
+    value === 'image-to-image' ||
+    value === 'inpaint'
     ? value
     : null;
 }

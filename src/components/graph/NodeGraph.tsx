@@ -26,6 +26,7 @@ import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
 import { useUIStore } from '@/stores/uiStore';
 import { DropOverlay } from './DropOverlay';
+import { FullscreenImageViewer } from './FullscreenImageViewer';
 import { ImageNode } from './ImageNode';
 import { NodeContextMenu, type NodeContextMenuAction } from './NodeContextMenu';
 import { ParentSelectDialog } from './ParentSelectDialog';
@@ -85,10 +86,12 @@ function NodeGraphInner() {
     nodeId: string;
     position: { x: number; y: number };
   } | null>(null);
+  const [fullscreenNodeId, setFullscreenNodeId] = useState<string | null>(null);
   const [reparentNodeId, setReparentNodeId] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeletingNode, setIsDeletingNode] = useState(false);
   const contextMenuNode = contextMenu ? nodesById[contextMenu.nodeId] : null;
+  const fullscreenNode = fullscreenNodeId ? nodesById[fullscreenNodeId] ?? null : null;
   const deleteTargetNode = deleteTargetId ? nodesById[deleteTargetId] : null;
   const deleteTargetLabel = deleteTargetNode
     ? getNodeSequenceLabel(deleteTargetNode)
@@ -224,10 +227,15 @@ function NodeGraphInner() {
       setDeleteTargetId(null);
       setIsDeletingNode(false);
     }
+
+    if (fullscreenNodeId && !nodesById[fullscreenNodeId]) {
+      setFullscreenNodeId(null);
+    }
   }, [
     contextMenu,
     deleteTargetId,
     filteredNodeIds,
+    fullscreenNodeId,
     nodesById,
     reparentNodeId,
     selectNode,
@@ -382,6 +390,13 @@ function NodeGraphInner() {
 
     return [
       {
+        id: 'open-fullscreen',
+        label: '\uD06C\uAC8C \uBCF4\uAE30',
+        onSelect: () => {
+          setFullscreenNodeId(contextMenuNode.id);
+        },
+      },
+      {
         id: 'open-detail',
         label: '상세 보기',
         onSelect: () => {
@@ -481,6 +496,11 @@ function NodeGraphInner() {
           onClose={() => setContextMenu(null)}
         />
       )}
+
+      <FullscreenImageViewer
+        node={fullscreenNode}
+        onClose={() => setFullscreenNodeId(null)}
+      />
 
       <DestructiveActionDialog
         isOpen={Boolean(deleteTargetNode && deleteImpact)}

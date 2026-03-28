@@ -14,6 +14,10 @@ export type PromptSource =
   | 'variation-derived';
 
 export type StagingSourceKind = 'generate-dialog' | 'variation-panel';
+export type VariationEditMode =
+  | 'prompt-only'
+  | 'image-to-image'
+  | 'inpaint';
 
 export type StagingCandidateStatus = 'staged' | 'accepted' | 'discarded';
 
@@ -165,6 +169,9 @@ export interface StagingBatch {
   aspectRatio: string | null;
   width: number | null;
   height: number | null;
+  variationMode: VariationEditMode | null;
+  sourceImageUrl: string | null;
+  maskImageUrl: string | null;
   intentTags: string[];
   changeTags: string[];
   note: string | null;

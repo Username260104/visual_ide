@@ -3,6 +3,7 @@ import type {
   PromptSource,
   StagingBatch,
   StagingSourceKind,
+  VariationEditMode,
 } from '@/lib/types';
 
 interface StageBatchInput {
@@ -18,6 +19,9 @@ interface StageBatchInput {
   aspectRatio?: string | null;
   width?: number | null;
   height?: number | null;
+  variationMode?: VariationEditMode | null;
+  sourceImageUrl?: string | null;
+  maskImageUrl?: string | null;
   intentTags?: string[];
   changeTags?: string[];
   note?: string | null;
@@ -58,6 +62,9 @@ export const useStagingStore = create<StagingStore>((set) => ({
       aspectRatio: normalizeNullableText(input.aspectRatio),
       width: normalizeNullableNumber(input.width),
       height: normalizeNullableNumber(input.height),
+      variationMode: input.variationMode ?? null,
+      sourceImageUrl: normalizeNullableText(input.sourceImageUrl),
+      maskImageUrl: normalizeNullableText(input.maskImageUrl),
       intentTags: [...(input.intentTags ?? [])],
       changeTags: [...(input.changeTags ?? [])],
       note: normalizeNullableText(input.note),

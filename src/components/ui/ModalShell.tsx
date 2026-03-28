@@ -1,7 +1,10 @@
 'use client';
 
 import type { CSSProperties, MouseEvent, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
+
+export const WORKSPACE_MODAL_TARGET_ID = 'ide-workspace-viewport';
 
 interface ModalShellProps {
   children: ReactNode;
@@ -9,6 +12,7 @@ interface ModalShellProps {
   closeOnBackdrop?: boolean;
   closeDisabled?: boolean;
   position?: 'fixed' | 'absolute';
+  portalTarget?: Element | DocumentFragment | null;
   backdropClassName?: string;
   panelClassName?: string;
   backdropStyle?: CSSProperties;
@@ -21,6 +25,7 @@ export function ModalShell({
   closeOnBackdrop = true,
   closeDisabled = false,
   position = 'fixed',
+  portalTarget,
   backdropClassName,
   panelClassName,
   backdropStyle,
@@ -36,7 +41,7 @@ export function ModalShell({
     event.stopPropagation();
   };
 
-  return (
+  const content = (
     <div
       className={cn(
         position === 'fixed' ? 'fixed inset-0' : 'absolute inset-0',
@@ -63,4 +68,6 @@ export function ModalShell({
       </div>
     </div>
   );
+
+  return portalTarget ? createPortal(content, portalTarget) : content;
 }

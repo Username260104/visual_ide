@@ -1,5 +1,6 @@
 import type Replicate from 'replicate';
 import { MODELS, MODEL_MAP, type ModelDef } from '@/lib/constants';
+import type { VariationEditMode } from '@/lib/types';
 import {
   deleteImages,
   type StorageUploadResult,
@@ -15,6 +16,15 @@ export interface BuildGenerationInputOptions {
   guidance?: number;
   steps?: number;
   resolution?: string;
+}
+
+export interface BuildVariationGenerationInputOptions
+  extends BuildGenerationInputOptions {
+  replicateId: string;
+  editMode?: VariationEditMode;
+  sourceImageUrl?: string | null;
+  maskImageUrl?: string | null;
+  promptStrength?: number;
 }
 
 interface RunReplicateGenerationOptions {
@@ -35,9 +45,15 @@ const DEFAULT_ASPECT_RATIO = '1:1';
 const DEFAULT_OUTPUT_COUNTS = [1, 2, 3, 4, 6, 8];
 const DEFAULT_PARALLEL_OUTPUT_COUNTS = [1, 2, 3, 4];
 const MAX_BATCH_OUTPUTS = 4;
+export const VARIATION_INPAINT_MODEL = {
+  id: 'flux-fill-dev',
+  replicateId: 'black-forest-labs/flux-fill-dev',
+  name: 'FLUX Fill Dev',
+} as const;
 const BATCH_MODEL_IDS = new Set([
   'black-forest-labs/flux-schnell',
   'black-forest-labs/flux-dev',
+  VARIATION_INPAINT_MODEL.replicateId,
 ]);
 
 export function getModelDefinition(modelId: string): ModelDef {
@@ -130,8 +146,104 @@ export function buildGenerationInput({
   return input;
 }
 
+export function buildVariationGenerationInput({
+  prompt,
+  aspectRatio = DEFAULT_ASPECT_RATIO,
+  customWidth,
+  customHeight,
+  guidance,
+  steps,
+  resolution,
+  replicateId,
+  editMode = 'prompt-only',
+  sourceImageUrl,
+  maskImageUrl,
+  promptStrength,
+}: BuildVariationGenerationInputOptions): Record<string, unknown> {
+  if (editMode === 'inpaint') {
+    if (!sourceImageUrl || !maskImageUrl) {
+      throw new Error('Inpaint variation requires both source image and mask.');
+    }
+
+    return {
+      prompt,
+      image: sourceImageUrl,
+      mask: maskImageUrl,
+      output_format: 'webp',
+      output_quality: 80,
+      megapixels: 'match_input',
+      ...(guidance !== undefined ? { guidance: Number(guidance) } : {}),
+      ...(steps !== undefined
+        ? { num_inference_steps: Number(steps) }
+        : {}),
+    };
+  }
+
+  const input = buildGenerationInput({
+    prompt,
+    aspectRatio,
+    customWidth,
+    customHeight,
+    guidance,
+    steps,
+    resolution,
+  });
+
+  if (editMode !== 'image-to-image' || !sourceImageUrl) {
+    return input;
+  }
+
+  if (replicateId === 'black-forest-labs/flux-2-pro') {
+    delete input.aspect_ratio;
+    delete input.width;
+    delete input.height;
+    delete input.resolution;
+
+    return {
+      ...input,
+      input_images: [sourceImageUrl],
+      aspect_ratio: 'match_input_image',
+    };
+  }
+
+  delete input.aspect_ratio;
+  delete input.width;
+  delete input.height;
+
+  return {
+    ...input,
+    image: sourceImageUrl,
+    ...(promptStrength !== undefined
+      ? { prompt_strength: Number(promptStrength) }
+      : {}),
+  };
+}
+
 export function supportsBatchGeneration(replicateId: string): boolean {
   return BATCH_MODEL_IDS.has(replicateId);
+}
+
+export function getVariationModeLabel(mode: VariationEditMode | null | undefined) {
+  switch (mode) {
+    case 'image-to-image':
+      return '원본 기반 편집';
+    case 'inpaint':
+      return '인페인트';
+    case 'prompt-only':
+      return '프롬프트 변형';
+    default:
+      return null;
+  }
+}
+
+export function getAspectRatioDisplayLabel(aspectRatio: string | null | undefined) {
+  if (!aspectRatio) {
+    return null;
+  }
+
+  return aspectRatio === 'match_input_image'
+    ? '원본 비율 유지'
+    : aspectRatio;
 }
 
 export async function runReplicateGeneration({
@@ -176,6 +288,14 @@ export async function persistGeneratedImages(
   projectId: string,
   outputs: ReplicateOutput[]
 ): Promise<string[]> {
+  const uploads = await persistGeneratedImageAssets(projectId, outputs);
+  return uploads.map((upload) => upload.publicUrl);
+}
+
+export async function persistGeneratedImageAssets(
+  projectId: string,
+  outputs: ReplicateOutput[]
+): Promise<StorageUploadResult[]> {
   const settledUploads = await Promise.allSettled(
     outputs.map((output) => persistSingleGeneratedImage(projectId, output))
   );
@@ -192,7 +312,7 @@ export async function persistGeneratedImages(
     throw new Error(getUploadFailureMessage(failedUpload.reason));
   }
 
-  return successfulUploads.map((upload) => upload.publicUrl);
+  return successfulUploads;
 }
 
 async function persistSingleGeneratedImage(
