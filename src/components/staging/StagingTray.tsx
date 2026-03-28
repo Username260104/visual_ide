@@ -456,11 +456,10 @@ function AcceptBatchDialog({
     }
 
     setDraftCandidates(
-      batch.candidates.map((candidate) =>
-        candidate.status === 'staged'
-          ? { ...candidate, selected: true }
-          : { ...candidate, selected: false }
-      )
+      batch.candidates.map((candidate) => ({
+        ...candidate,
+        selected: candidate.status === 'staged',
+      }))
     );
   }, [batch]);
 
@@ -470,16 +469,12 @@ function AcceptBatchDialog({
 
   const sourceLabel =
     batch.sourceKind === 'variation-panel' ? '변형 비교' : '생성 비교';
-  const stagedCandidates = draftCandidates.filter(
-    (candidate) => candidate.status === 'staged'
-  );
-  const acceptedCandidates = stagedCandidates.filter((candidate) => candidate.selected);
-  const rejectedCandidates = stagedCandidates.filter((candidate) => !candidate.selected);
-  const discardedCandidates = draftCandidates.filter(
-    (candidate) => candidate.status === 'discarded'
-  );
-  const allStagedSelected =
-    stagedCandidates.length > 0 && acceptedCandidates.length === stagedCandidates.length;
+  const comparisonCandidates = draftCandidates;
+  const acceptedCandidates = comparisonCandidates.filter((candidate) => candidate.selected);
+  const discardedCandidates = comparisonCandidates.filter((candidate) => !candidate.selected);
+  const allCandidatesSelected =
+    comparisonCandidates.length > 0 &&
+    acceptedCandidates.length === comparisonCandidates.length;
 
   const updateDraftCandidates = (
     updater: (current: StagingCandidate[]) => StagingCandidate[]
@@ -491,7 +486,7 @@ function AcceptBatchDialog({
   const toggleCandidateSelection = (candidateId: string) => {
     updateDraftCandidates((current) =>
       current.map((candidate) =>
-        candidate.id !== candidateId || candidate.status !== 'staged'
+        candidate.id !== candidateId
           ? candidate
           : { ...candidate, selected: !candidate.selected }
       )
@@ -500,45 +495,28 @@ function AcceptBatchDialog({
 
   const selectAllCandidates = () => {
     updateDraftCandidates((current) =>
-      current.map((candidate) =>
-        candidate.status !== 'staged' ? candidate : { ...candidate, selected: true }
-      )
+      current.map((candidate) => ({ ...candidate, selected: true }))
     );
   };
 
   const clearSelectedCandidates = () => {
     updateDraftCandidates((current) =>
-      current.map((candidate) =>
-        candidate.status !== 'staged' ? candidate : { ...candidate, selected: false }
-      )
-    );
-  };
-
-  const discardSelectedCandidates = () => {
-    updateDraftCandidates((current) =>
-      current.map((candidate) =>
-        candidate.status === 'staged' && candidate.selected
-          ? { ...candidate, selected: false, status: 'discarded' as const }
-          : candidate
-      )
-    );
-  };
-
-  const restoreDiscardedCandidates = () => {
-    updateDraftCandidates((current) =>
-      current.map((candidate) =>
-        candidate.status === 'discarded'
-          ? { ...candidate, selected: false, status: 'staged' as const }
-          : candidate
-      )
+      current.map((candidate) => ({ ...candidate, selected: false }))
     );
   };
 
   const handleConfirm = () => {
+    const normalizedCandidates: StagingCandidate[] = draftCandidates.map(
+      (candidate): StagingCandidate => ({
+        ...candidate,
+        status: candidate.selected ? 'staged' : 'discarded',
+      })
+    );
+
     onConfirm(
       {
         ...batch,
-        candidates: draftCandidates.map((candidate) => ({ ...candidate })),
+        candidates: normalizedCandidates,
       },
       acceptedCandidates.map((candidate) => candidate.id)
     );
@@ -556,10 +534,10 @@ function AcceptBatchDialog({
             className="text-sm font-semibold"
             style={{ color: 'var(--text-primary)' }}
           >
-            {sourceLabel} 후 채택
+            {sourceLabel + ' ' + '후 채택'}
           </h3>
           <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            이 모달 안에서 후보를 고르고 제외한 뒤 최종 채택을 확정합니다.
+            {'카드를 누르면 채택 예정과 제외 예정 사이를 바로 오갈 수 있습니다.'}
           </p>
         </div>
         <button
@@ -568,15 +546,20 @@ function AcceptBatchDialog({
           onClick={onClose}
           disabled={isSubmitting}
         >
-          닫기
+          {'닫기'}
         </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <StatusPill label={`비교 후보 ${stagedCandidates.length}개`} />
-        <StatusPill label={`채택 예정 ${acceptedCandidates.length}개`} tone="accent" />
-        <StatusPill label={`기각 예정 ${rejectedCandidates.length}개`} />
-        <StatusPill label={`제외 예정 ${discardedCandidates.length}개`} tone="danger" />
+        <StatusPill label={'비교 후보 ' + comparisonCandidates.length + '개'} />
+        <StatusPill
+          label={'채택 예정 ' + acceptedCandidates.length + '개'}
+          tone="accent"
+        />
+        <StatusPill
+          label={'제외 예정 ' + discardedCandidates.length + '개'}
+          tone="danger"
+        />
       </div>
 
       <section
@@ -589,11 +572,10 @@ function AcceptBatchDialog({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h4 className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
-              비교 후보 선택
+              {'후보 선택'}
             </h4>
             <p className="mt-1 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-              카드를 눌러 채택 예정에서 빼거나 다시 포함할 수 있습니다. 선택된 카드만
-              채택 대상으로 남고, 선택 제외는 비교 대상에서 완전히 빠집니다.
+              {'선택된 카드는 채택 예정, 선택을 풀면 바로 제외 예정으로 이동합니다.'}
             </p>
           </div>
 
@@ -602,12 +584,12 @@ function AcceptBatchDialog({
               className="rounded px-2.5 py-1.5 text-[11px]"
               style={{
                 ...getSecondaryButtonStyle(),
-                opacity: !allStagedSelected && stagedCandidates.length > 0 ? 1 : 0.55,
+                opacity: !allCandidatesSelected && comparisonCandidates.length > 0 ? 1 : 0.55,
               }}
               onClick={selectAllCandidates}
-              disabled={allStagedSelected || stagedCandidates.length === 0 || isSubmitting}
+              disabled={allCandidatesSelected || comparisonCandidates.length === 0 || isSubmitting}
             >
-              전체 선택
+              {'전체 선택'}
             </button>
             <button
               className="rounded px-2.5 py-1.5 text-[11px]"
@@ -618,44 +600,18 @@ function AcceptBatchDialog({
               onClick={clearSelectedCandidates}
               disabled={acceptedCandidates.length === 0 || isSubmitting}
             >
-              선택 해제
-            </button>
-            <button
-              className="rounded px-2.5 py-1.5 text-[11px]"
-              style={{
-                ...getSecondaryButtonStyle(),
-                opacity: acceptedCandidates.length > 0 ? 1 : 0.55,
-                color:
-                  acceptedCandidates.length > 0
-                    ? 'var(--status-dropped)'
-                    : 'var(--text-muted)',
-              }}
-              onClick={discardSelectedCandidates}
-              disabled={acceptedCandidates.length === 0 || isSubmitting}
-            >
-              선택 제외
-            </button>
-            <button
-              className="rounded px-2.5 py-1.5 text-[11px]"
-              style={{
-                ...getSecondaryButtonStyle(),
-                opacity: discardedCandidates.length > 0 ? 1 : 0.55,
-              }}
-              onClick={restoreDiscardedCandidates}
-              disabled={discardedCandidates.length === 0 || isSubmitting}
-            >
-              제외 복원
+              {'선택 해제'}
             </button>
           </div>
         </div>
 
-        {stagedCandidates.length === 0 ? (
+        {comparisonCandidates.length === 0 ? (
           <p className="rounded px-2 py-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-            현재 비교 중인 후보가 없습니다. 제외 복원으로 다시 가져올 수 있습니다.
+            {'비교할 후보가 없습니다.'}
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-            {stagedCandidates.map((candidate) => (
+            {comparisonCandidates.map((candidate) => (
               <CandidateCard
                 key={candidate.id}
                 candidate={candidate}
@@ -666,27 +622,20 @@ function AcceptBatchDialog({
         )}
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-4 xl:grid-cols-2">
         <ComparisonColumn
-          title={`채택 예정 ${acceptedCandidates.length}개`}
-          description="이 후보들이 노드로 생성됩니다."
+          title={'채택 예정 ' + acceptedCandidates.length + '개'}
+          description={'이 후보들이 노드로 생성됩니다.'}
           candidates={acceptedCandidates}
           tone="accept"
-          emptyMessage="채택 예정 후보가 없습니다."
+          emptyMessage={'채택 예정 후보가 없습니다.'}
         />
         <ComparisonColumn
-          title={`기각 예정 ${rejectedCandidates.length}개`}
-          description="이번 비교 로그에는 남지만 노드로 생성되지는 않습니다."
-          candidates={rejectedCandidates}
-          tone="reject"
-          emptyMessage="기각 예정 후보가 없습니다."
-        />
-        <ComparisonColumn
-          title={`제외 예정 ${discardedCandidates.length}개`}
-          description="비교에서 제외되어 별도로 기록됩니다."
+          title={'제외 예정 ' + discardedCandidates.length + '개'}
+          description={'비교에서 빠지고 보관 기록만 남깁니다.'}
           candidates={discardedCandidates}
           tone="discard"
-          emptyMessage="제외 예정 후보가 없습니다."
+          emptyMessage={'제외 예정 후보가 없습니다.'}
         />
       </div>
 
@@ -695,12 +644,12 @@ function AcceptBatchDialog({
           className="text-[11px] font-semibold uppercase tracking-wider"
           style={{ color: 'var(--text-muted)' }}
         >
-          채택 이유
+          {'채택 이유'}
         </label>
         <textarea
           value={rationale}
           onChange={(event) => onChangeRationale(event.target.value)}
-          placeholder="왜 이 후보를 채택했는지, 무엇이 더 적합했는지 남겨 주세요."
+          placeholder={'왜 이 후보를 채택했는지, 무엇이 더 적합했는지 남겨 주세요.'}
           rows={4}
           className="w-full resize-none rounded px-2.5 py-2 text-xs focus:outline-none"
           style={{
@@ -725,7 +674,7 @@ function AcceptBatchDialog({
           onClick={onClose}
           disabled={isSubmitting}
         >
-          취소
+          {'취소'}
         </button>
         <button
           className="rounded px-3 py-1.5 text-xs font-semibold"
@@ -737,7 +686,9 @@ function AcceptBatchDialog({
           onClick={handleConfirm}
           disabled={acceptedCandidates.length === 0 || isSubmitting}
         >
-          {isSubmitting ? '채택 중...' : `${acceptedCandidates.length}개 후보 이미지 채택`}
+          {isSubmitting
+            ? '채택 중...'
+            : acceptedCandidates.length + '개 후보 이미지 채택'}
         </button>
       </div>
     </ModalShell>
@@ -785,7 +736,7 @@ function ComparisonColumn({
   title: string;
   description?: string;
   candidates: StagingCandidate[];
-  tone: 'accept' | 'reject' | 'discard';
+  tone: 'accept' | 'discard';
   emptyMessage: string;
 }) {
   return (
@@ -827,7 +778,7 @@ function PreviewCard({
   tone,
 }: {
   candidate: StagingCandidate;
-  tone: 'accept' | 'reject' | 'discard';
+  tone: 'accept' | 'discard';
 }) {
   return (
     <div
@@ -844,7 +795,7 @@ function PreviewCard({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={candidate.imageUrl}
-          alt={`candidate ${candidate.index + 1}`}
+          alt={'candidate ' + (candidate.index + 1)}
           className="h-full w-full object-contain"
         />
       </div>
@@ -855,7 +806,7 @@ function PreviewCard({
           color: 'var(--text-secondary)',
         }}
       >
-        <span>#{candidate.index + 1}</span>
+        <span>{'#' + (candidate.index + 1)}</span>
         <span>{getComparisonToneLabel(tone)}</span>
       </div>
     </div>
@@ -878,7 +829,7 @@ function TrayCandidatePreviewCard({ candidate }: { candidate: StagingCandidate }
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={candidate.imageUrl}
-          alt={`staged candidate ${candidate.index + 1}`}
+          alt={'staged candidate ' + (candidate.index + 1)}
           className="h-full w-full object-contain"
         />
         <span
@@ -888,7 +839,7 @@ function TrayCandidatePreviewCard({ candidate }: { candidate: StagingCandidate }
             color: 'var(--text-inverse)',
           }}
         >
-          #{candidate.index + 1}
+          {'#' + (candidate.index + 1)}
         </span>
       </div>
     </div>
@@ -914,6 +865,7 @@ function CandidateCard({
         boxShadow: candidate.selected
           ? '0 0 0 1px var(--accent-primary)'
           : 'none',
+        opacity: candidate.selected ? 1 : 0.72,
       }}
       onClick={onClick}
     >
@@ -924,7 +876,7 @@ function CandidateCard({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={candidate.imageUrl}
-          alt={`staged candidate ${candidate.index + 1}`}
+          alt={'staged candidate ' + (candidate.index + 1)}
           className="h-full w-full object-contain"
         />
       </div>
@@ -936,11 +888,11 @@ function CandidateCard({
           color: 'var(--text-inverse)',
         }}
       >
-        #{candidate.index + 1}
+        {'#' + (candidate.index + 1)}
       </span>
 
       <span
-        className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold"
+        className="absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-semibold"
         style={{
           backgroundColor: candidate.selected
             ? 'var(--accent-primary)'
@@ -948,7 +900,7 @@ function CandidateCard({
           color: 'var(--text-inverse)',
         }}
       >
-        {candidate.selected ? '✓' : ''}
+        {candidate.selected ? '채택' : '제외'}
       </span>
     </button>
   );
@@ -962,28 +914,20 @@ function getDiscardedCandidates(batch: StagingBatch) {
   return batch.candidates.filter((candidate) => candidate.status === 'discarded');
 }
 
-function getComparisonToneBorderColor(tone: 'accept' | 'reject' | 'discard') {
+function getComparisonToneBorderColor(tone: 'accept' | 'discard') {
   if (tone === 'accept') {
     return 'var(--accent-primary)';
   }
 
-  if (tone === 'discard') {
-    return 'var(--status-dropped)';
-  }
-
-  return 'var(--border-default)';
+  return 'var(--status-dropped)';
 }
 
-function getComparisonToneLabel(tone: 'accept' | 'reject' | 'discard') {
+function getComparisonToneLabel(tone: 'accept' | 'discard') {
   if (tone === 'accept') {
     return '채택';
   }
 
-  if (tone === 'discard') {
-    return '제외';
-  }
-
-  return '기각';
+  return '제외';
 }
 
 function getSecondaryButtonStyle() {

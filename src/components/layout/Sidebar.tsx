@@ -17,6 +17,7 @@ import { useNodeStore } from '@/stores/nodeStore';
 import { type BranchFilter, type SidebarTab, useUIStore } from '@/stores/uiStore';
 import { ArchiveSettingsPanel } from './ArchiveSettingsPanel';
 import { DirectionDialog } from './DirectionDialog';
+import { ImageBridgePanel } from './ImageBridgePanel';
 import { StrategySettingsPanel } from './StrategySettingsPanel';
 
 const SIDEBAR_TAB_LABELS: Record<SidebarTab, string> = {
@@ -150,12 +151,7 @@ export function Sidebar() {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {activeSidebarTab === 'image-bridge' && (
-          <div className="flex flex-col gap-3 p-3">
-            <SidebarPlaceholderPanel
-              title="이미지 브릿지"
-              description="들여오기와 내보내기 기능은 다음 단계에서 다룹니다. 지금은 작업 흐름에서 자리를 먼저 확보해 둡니다."
-            />
-          </div>
+          <ImageBridgePanel />
         )}
 
         {activeSidebarTab === 'branches' && (
