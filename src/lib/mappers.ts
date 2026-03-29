@@ -15,6 +15,7 @@ import type {
   JsonValue,
   NodeSource,
   NodeStatus,
+  NodeType,
   PromptSource,
 } from './types';
 
@@ -39,6 +40,7 @@ export function mapPrismaNodeToNodeData(n: PrismaNode): NodeData {
     intentTags: n.intentTags,
     changeTags: n.changeTags,
     note: n.note,
+    nodeType: n.nodeType as NodeType,
     status: n.status as NodeStatus,
     statusReason: n.statusReason,
     nodeOrdinal: n.nodeOrdinal,

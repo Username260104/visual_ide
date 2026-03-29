@@ -130,6 +130,7 @@ export async function PATCH(
   if (body.intentTags !== undefined) data.intentTags = body.intentTags;
   if (body.changeTags !== undefined) data.changeTags = body.changeTags;
   if (body.note !== undefined) data.note = body.note;
+  if (body.nodeType !== undefined) data.nodeType = body.nodeType;
   if (body.status !== undefined) data.status = body.status;
   if (body.statusReason !== undefined) data.statusReason = body.statusReason;
   if (body.position !== undefined) {
@@ -193,6 +194,21 @@ export async function PATCH(
           toStatus: updatedNode.status,
           fromStatusReason: currentNode.statusReason,
           toStatusReason: updatedNode.statusReason,
+        },
+      });
+    }
+
+    if (currentNode.nodeType !== updatedNode.nodeType) {
+      events.push({
+        projectId: params.id,
+        nodeId: updatedNode.id,
+        directionId: updatedNode.directionId,
+        kind: 'node-type-changed' as const,
+        payload: {
+          nodeId: updatedNode.id,
+          nodeLabel,
+          fromType: currentNode.nodeType,
+          toType: updatedNode.nodeType,
         },
       });
     }

@@ -50,6 +50,7 @@ export function ParentSelectDialog() {
           addNode({
             imageUrl,
             source: 'imported',
+            nodeType: 'reference',
             parentNodeId,
             directionId: parentNode?.directionId ?? null,
             position: {

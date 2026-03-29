@@ -2,31 +2,42 @@
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { fetchJson } from '@/lib/clientApi';
-import { STATUS_LABELS } from '@/lib/constants';
+import { STATUS_LABELS, TYPE_LABELS } from '@/lib/constants';
 import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
 import { getNodeDisplayPrompt } from '@/lib/promptProvenance';
-import { Direction, NodeData, NodeStatus } from '@/lib/types';
+import { Direction, NodeData, NodeStatus, NodeType } from '@/lib/types';
 import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
 import { useUIStore } from '@/stores/uiStore';
 
 type NodeStatusFilter = 'all' | NodeStatus;
+type NodeTypeFilter = 'all' | NodeType;
 
 const NODE_STATUS_FILTER_OPTIONS: Array<{
   value: NodeStatusFilter;
   label: string;
 }> = [
   { value: 'all', label: '모든 상태' },
-  { value: 'unclassified', label: STATUS_LABELS.unclassified },
   { value: 'reviewing', label: STATUS_LABELS.reviewing },
   { value: 'promising', label: STATUS_LABELS.promising },
   { value: 'final', label: STATUS_LABELS.final },
   { value: 'dropped', label: STATUS_LABELS.dropped },
 ];
 
+const NODE_TYPE_FILTER_OPTIONS: Array<{
+  value: NodeTypeFilter;
+  label: string;
+}> = [
+  { value: 'all', label: '모든 유형' },
+  { value: 'moodboard', label: TYPE_LABELS.moodboard },
+  { value: 'reference', label: TYPE_LABELS.reference },
+  { value: 'main', label: TYPE_LABELS.main },
+];
+
 function getNodeSearchText(node: NodeData) {
   return [
     getNodeSequenceLabel(node),
+    TYPE_LABELS[node.nodeType],
     STATUS_LABELS[node.status],
     node.note,
     getNodeDisplayPrompt(node) ?? '',
@@ -50,6 +61,8 @@ export function ArchiveSettingsPanel() {
   const [query, setQuery] = useState('');
   const [nodeStatusFilter, setNodeStatusFilter] =
     useState<NodeStatusFilter>('all');
+  const [nodeTypeFilter, setNodeTypeFilter] =
+    useState<NodeTypeFilter>('all');
   const [pendingRestoreKey, setPendingRestoreKey] = useState<string | null>(null);
 
   const deferredQuery = useDeferredValue(query);
@@ -118,13 +131,17 @@ export function ArchiveSettingsPanel() {
         return false;
       }
 
+      if (nodeTypeFilter !== 'all' && node.nodeType !== nodeTypeFilter) {
+        return false;
+      }
+
       if (!normalizedQuery) {
         return true;
       }
 
       return getNodeSearchText(node).includes(normalizedQuery);
     });
-  }, [archivedNodes, nodeStatusFilter, normalizedQuery]);
+  }, [archivedNodes, nodeStatusFilter, nodeTypeFilter, normalizedQuery]);
 
   const handleRestoreDirection = useCallback(
     async (directionId: string) => {
@@ -327,8 +344,35 @@ export function ArchiveSettingsPanel() {
           </select>
         </div>
 
+        <div className="mt-3 flex flex-col gap-2">
+          <label
+            className="text-[11px] font-semibold uppercase tracking-wider"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            이미지 유형 필터
+          </label>
+          <select
+            value={nodeTypeFilter}
+            onChange={(event) =>
+              setNodeTypeFilter(event.target.value as NodeTypeFilter)
+            }
+            className="w-full rounded px-3 py-2 text-sm"
+            style={{
+              backgroundColor: 'var(--bg-input)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-default)',
+            }}
+          >
+            {NODE_TYPE_FILTER_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {error && (
-          <p className="mt-3 text-xs" style={{ color: 'var(--status-dropped)' }}>
+          <p className="mt-3 text-xs" style={{ color: 'var(--feedback-error)' }}>
             {error}
           </p>
         )}
@@ -478,6 +522,15 @@ export function ArchiveSettingsPanel() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className="rounded px-2 py-0.5 text-[11px] font-semibold"
+                        style={{
+                          backgroundColor: 'var(--bg-active)',
+                          color: 'var(--text-secondary)',
+                        }}
+                      >
+                        {TYPE_LABELS[node.nodeType]}
+                      </span>
                       <span
                         className="rounded px-2 py-0.5 text-[11px] font-semibold"
                         style={{

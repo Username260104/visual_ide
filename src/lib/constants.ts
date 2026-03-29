@@ -1,26 +1,23 @@
-import { NodeStatus } from './types';
-
-export const STATUS_COLORS: Record<NodeStatus, string> = {
-  unclassified: 'var(--status-unclassified)',
-  reviewing: 'var(--status-reviewing)',
-  promising: 'var(--status-promising)',
-  final: 'var(--status-final)',
-  dropped: 'var(--status-dropped)',
-};
+import { NodeStatus, NodeType } from './types';
 
 export const STATUS_LABELS: Record<NodeStatus, string> = {
-  unclassified: '미분류',
   reviewing: '검토 중',
   promising: '유망',
   final: '최종',
   dropped: '탈락',
 };
 
+export const TYPE_LABELS: Record<NodeType, string> = {
+  moodboard: '무드보드',
+  reference: '레퍼런스',
+  main: '메인',
+};
+
 export const INTENT_TAG_OPTIONS = [
-  '톤 조정',
+  '평감 조정',
   '구도 정리',
   '분위기 변경',
-  '디테일 추가',
+  '크기 추가',
   '스타일 변경',
   '요소 제거',
   '요소 추가',
@@ -73,7 +70,7 @@ export const MODELS: ModelDef[] = [
     id: 'flux-schnell',
     replicateId: 'black-forest-labs/flux-schnell',
     name: 'FLUX.1 Schnell',
-    desc: '빠른 생성, 초안 탐색용',
+    desc: 'Fast draft generation for early exploration.',
     supportsBatch: true,
     maxOutputs: 4,
     supportsCustomSize: false,
@@ -103,7 +100,7 @@ export const MODELS: ModelDef[] = [
     id: 'flux-dev',
     replicateId: 'black-forest-labs/flux-dev',
     name: 'FLUX.1 Dev',
-    desc: '더 높은 품질, 균형형',
+    desc: 'Higher quality generation with prompt control.',
     supportsBatch: true,
     maxOutputs: 4,
     supportsCustomSize: false,
@@ -133,7 +130,7 @@ export const MODELS: ModelDef[] = [
     id: 'flux-1.1-pro',
     replicateId: 'black-forest-labs/flux-1.1-pro',
     name: 'FLUX 1.1 Pro',
-    desc: '고품질 결과, 커스텀 해상도 지원',
+    desc: 'High quality output with custom sizing.',
     supportsBatch: false,
     maxOutputs: 1,
     supportsCustomSize: true,
@@ -162,7 +159,7 @@ export const MODELS: ModelDef[] = [
     id: 'flux-2-pro',
     replicateId: 'black-forest-labs/flux-2-pro',
     name: 'FLUX.2 Pro',
-    desc: '최신 상위 품질, 최대 2048px',
+    desc: 'Latest premium model with up to 2048px output.',
     supportsBatch: false,
     maxOutputs: 1,
     supportsCustomSize: true,
@@ -191,7 +188,7 @@ export const MODELS: ModelDef[] = [
     id: 'seedream-4.5',
     replicateId: 'bytedance/seedream-4.5',
     name: 'Seedream 4.5',
-    desc: 'ByteDance 계열, 4K 대응',
+    desc: 'ByteDance model tuned for large, sharp images.',
     supportsBatch: false,
     maxOutputs: 1,
     supportsCustomSize: false,
@@ -209,7 +206,7 @@ export const MODELS: ModelDef[] = [
     id: 'ideogram-v3-turbo',
     replicateId: 'ideogram-ai/ideogram-v3-turbo',
     name: 'Ideogram V3 Turbo',
-    desc: '텍스트와 타이포 표현에 강점',
+    desc: 'Strong text and typography rendering.',
     supportsBatch: false,
     maxOutputs: 1,
     supportsCustomSize: false,
@@ -243,7 +240,7 @@ export const MODELS: ModelDef[] = [
     id: 'recraft-v4',
     replicateId: 'recraft-ai/recraft-v4',
     name: 'Recraft V4',
-    desc: '브랜딩과 그래픽 스타일에 강점',
+    desc: 'Good for brand-driven illustration and graphic outputs.',
     supportsBatch: false,
     maxOutputs: 1,
     supportsCustomSize: false,

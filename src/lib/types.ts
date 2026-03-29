@@ -1,9 +1,5 @@
-export type NodeStatus =
-  | 'unclassified'
-  | 'reviewing'
-  | 'promising'
-  | 'final'
-  | 'dropped';
+export type NodeStatus = 'reviewing' | 'promising' | 'final' | 'dropped';
+export type NodeType = 'moodboard' | 'reference' | 'main';
 
 export type NodeSource = 'ai-generated' | 'imported';
 
@@ -25,6 +21,7 @@ export type ActivityEventKind =
   | 'node-created'
   | 'node-reparented'
   | 'node-status-changed'
+  | 'node-type-changed'
   | 'node-direction-changed'
   | 'node-note-saved'
   | 'node-archived'
@@ -98,7 +95,8 @@ export interface NodeData {
   changeTags: string[];
   note: string;
 
-  // Status
+  // Role and status
+  nodeType: NodeType;
   status: NodeStatus;
   statusReason: string | null;
 

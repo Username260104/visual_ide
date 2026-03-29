@@ -98,7 +98,7 @@ export function DestructiveActionDialog({
       )}
 
       {error && (
-        <p className="text-xs" style={{ color: 'var(--status-dropped)' }}>
+        <p className="text-xs" style={{ color: 'var(--feedback-error)' }}>
           {error}
         </p>
       )}

@@ -65,7 +65,7 @@ function NodeGraphInner() {
   const nodeList = useMemo(() => Object.values(nodesById), [nodesById]);
   const filteredNodeList = useMemo(() => {
     switch (branchFilter.kind) {
-      case 'unclassified':
+      case 'unassigned':
         return nodeList.filter((node) => node.directionId === null);
       case 'direction':
         return nodeList.filter(
@@ -335,7 +335,7 @@ function NodeGraphInner() {
           feedback: {
             action: 'position',
             savingMessage: '위치 저장 중...',
-            successMessage: '위치가 저장되었습니다',
+            successMessage: '위치가 저장되었습니다.',
             errorMessage: '위치를 저장하지 못했습니다.',
           },
         }
@@ -391,7 +391,7 @@ function NodeGraphInner() {
     return [
       {
         id: 'open-fullscreen',
-        label: '\uD06C\uAC8C \uBCF4\uAE30',
+        label: '크게 보기',
         onSelect: () => {
           setFullscreenNodeId(contextMenuNode.id);
         },
@@ -424,7 +424,7 @@ function NodeGraphInner() {
       },
       {
         id: 'reparent',
-        label: '상위 변경...',
+        label: '상위 변경',
         onSelect: () => {
           setReparentNodeId(contextMenuNode.id);
         },
@@ -518,7 +518,7 @@ function NodeGraphInner() {
                 `전체 후손 ${deleteImpact.descendantCount}개`,
                 deleteTargetNode.directionId
                   ? '현재 브랜치 연결 정보가 함께 해제됩니다.'
-                  : '미분류 이미지입니다.',
+                  : '브랜치가 지정되지 않은 이미지입니다.',
               ]
             : []
         }

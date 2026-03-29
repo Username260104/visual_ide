@@ -1,36 +1,36 @@
 'use client';
 
-import { STATUS_LABELS } from '@/lib/constants';
-import type { NodeStatus } from '@/lib/types';
+import { TYPE_LABELS } from '@/lib/constants';
+import type { NodeType } from '@/lib/types';
 
-const STATUSES: NodeStatus[] = ['reviewing', 'promising', 'final', 'dropped'];
+const TYPES: NodeType[] = ['moodboard', 'reference', 'main'];
 
-interface StatusSelectorProps {
-  status: NodeStatus;
-  onStatusChange: (status: NodeStatus) => void;
+interface TypeSelectorProps {
+  nodeType: NodeType;
+  onTypeChange: (nodeType: NodeType) => void;
 }
 
-export function StatusSelector({
-  status,
-  onStatusChange,
-}: StatusSelectorProps) {
+export function TypeSelector({
+  nodeType,
+  onTypeChange,
+}: TypeSelectorProps) {
   return (
     <div className="flex flex-col gap-2">
       <label
         className="text-[11px] font-semibold uppercase tracking-wider"
         style={{ color: 'var(--text-muted)' }}
       >
-        상태
+        유형
       </label>
 
       <div className="flex flex-wrap gap-1.5">
-        {STATUSES.map((item) => {
-          const selected = status === item;
+        {TYPES.map((item) => {
+          const selected = nodeType === item;
 
           return (
             <button
               key={item}
-              onClick={() => onStatusChange(item)}
+              onClick={() => onTypeChange(item)}
               className="rounded px-2.5 py-1 text-xs transition-colors"
               style={{
                 backgroundColor: selected ? 'var(--bg-active)' : 'var(--bg-input)',
@@ -40,7 +40,7 @@ export function StatusSelector({
                 }`,
               }}
             >
-              {STATUS_LABELS[item]}
+              {TYPE_LABELS[item]}
             </button>
           );
         })}

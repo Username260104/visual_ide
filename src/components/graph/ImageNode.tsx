@@ -3,8 +3,8 @@
 import { memo, useState, type SyntheticEvent } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import {
-  STATUS_COLORS,
   STATUS_LABELS,
+  TYPE_LABELS,
   getNodeDisplaySize,
 } from '@/lib/constants';
 import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
@@ -14,9 +14,9 @@ import { useNodeStore } from '@/stores/nodeStore';
 
 const NODE_META_H = 44;
 const NODE_BAR_H = 4;
-const UNCLASSIFIED_LABEL = '\uBBF8\uBD84\uB958';
-const AI_SOURCE_LABEL = `AI \uC0DD\uC131`;
-const UPLOAD_SOURCE_LABEL = '\uC5C5\uB85C\uB4DC';
+const BRANCH_UNASSIGNED_LABEL = '브랜치 없음';
+const AI_SOURCE_LABEL = 'AI 생성';
+const UPLOAD_SOURCE_LABEL = '업로드';
 
 function ImageNodeComponent({
   data,
@@ -33,7 +33,7 @@ function ImageNodeComponent({
   const isActive = selected;
   const direction = data.directionId ? directions[data.directionId] : null;
   const directionColor = direction?.color ?? 'var(--border-default)';
-  const directionLabel = direction?.name ?? UNCLASSIFIED_LABEL;
+  const directionLabel = direction?.name ?? BRANCH_UNASSIGNED_LABEL;
   const effectiveWidth = data.width ?? measuredDimensions?.width ?? null;
   const effectiveHeight = data.height ?? measuredDimensions?.height ?? null;
   const displaySize = getNodeDisplaySize(
@@ -88,7 +88,7 @@ function ImageNodeComponent({
         transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
         cursor: dragging ? 'grabbing' : 'grab',
       }}
-      title={`${directionLabel}\n${metaLabel}`}
+      title={`${directionLabel}\n${TYPE_LABELS[data.nodeType]} / ${STATUS_LABELS[data.status]}\n${metaLabel}`}
     >
       <Handle
         type="target"
@@ -131,28 +131,24 @@ function ImageNodeComponent({
 
           <div
             className="absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold"
-            style={{
-              backgroundColor: 'rgba(0, 0, 0, 0.68)',
-              color: 'var(--text-inverse)',
-              backdropFilter: 'blur(4px)',
-            }}
+            style={getOverlayBadgeStyle()}
           >
             {getNodeSequenceLabel(data)}
           </div>
 
-          <div
-            className="absolute right-1.5 top-1.5 rounded px-1.5 py-0.5 text-[10px] font-medium"
-            style={{
-              backgroundColor: STATUS_COLORS[data.status],
-              color:
-                data.status === 'reviewing'
-                  ? 'var(--bg-base)'
-                  : 'var(--text-inverse)',
-              boxShadow: '0 1px 6px rgba(0,0,0,0.25)',
-            }}
-            title={STATUS_LABELS[data.status]}
-          >
-            {STATUS_LABELS[data.status]}
+          <div className="absolute right-1.5 top-1.5 flex flex-col items-end gap-1">
+            <span
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+              style={getOverlayBadgeStyle()}
+            >
+              {TYPE_LABELS[data.nodeType]}
+            </span>
+            <span
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+              style={getOverlayBadgeStyle()}
+            >
+              {STATUS_LABELS[data.status]}
+            </span>
           </div>
         </div>
 
@@ -192,8 +188,7 @@ function ImageNodeComponent({
             height: NODE_BAR_H,
             backgroundColor: directionColor,
           }}
-        >
-        </div>
+        />
       </div>
 
       <Handle
@@ -252,6 +247,14 @@ function greatestCommonDivisor(left: number, right: number): number {
   }
 
   return a || 1;
+}
+
+function getOverlayBadgeStyle() {
+  return {
+    backgroundColor: 'rgba(0, 0, 0, 0.68)',
+    color: 'var(--text-inverse)',
+    backdropFilter: 'blur(4px)',
+  };
 }
 
 export const ImageNode = memo(ImageNodeComponent);

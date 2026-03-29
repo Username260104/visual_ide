@@ -83,12 +83,13 @@ export function useImageDrop() {
         await Promise.all(
           imageUrls.map((url, i) =>
             addNode({
-            imageUrl: url,
-            source: 'imported',
-            position: {
-              x: position.x + i * 180,
-              y: position.y,
-            },
+              imageUrl: url,
+              source: 'imported',
+              nodeType: 'reference',
+              position: {
+                x: position.x + i * 180,
+                y: position.y,
+              },
             })
           )
         );

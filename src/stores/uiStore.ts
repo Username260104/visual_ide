@@ -7,7 +7,7 @@ export interface PendingDrop {
 
 export type BranchFilter =
   | { kind: 'all' }
-  | { kind: 'unclassified' }
+  | { kind: 'unassigned' }
   | { kind: 'direction'; directionId: string };
 
 export type SidebarTab =
@@ -23,6 +23,7 @@ export type SaveFeedbackEntityType = 'node' | 'direction' | 'project' | 'staging
 export type SaveFeedbackAction =
   | 'note'
   | 'status'
+  | 'type'
   | 'direction'
   | 'position'
   | 'delete'

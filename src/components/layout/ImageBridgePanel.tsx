@@ -8,6 +8,7 @@ import {
 } from '@/lib/imageBridge';
 import { NODE_ATTACHMENT_GAP, NODE_CHILD_OFFSET_Y } from '@/lib/nodeLayout';
 import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
+import { STATUS_LABELS } from '@/lib/constants';
 import type { NodeData } from '@/lib/types';
 import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
@@ -155,6 +156,7 @@ export function ImageBridgePanel() {
         await addNode({
           imageUrl: upload.imageUrl,
           source: 'imported',
+          nodeType: 'reference',
           parentNodeId: createdParent?.id ?? null,
           directionId: createdParent?.directionId ?? null,
           width: upload.width ?? null,
@@ -245,13 +247,13 @@ export function ImageBridgePanel() {
               <InfoTile label="노드" value={getNodeSequenceLabel(selectedNode)} />
               <InfoTile
                 label="브랜치"
-                value={selectedDirection?.name ?? '미분류'}
+                value={selectedDirection?.name ?? '브랜치 없음'}
               />
               <InfoTile
                 label="크기"
                 value={formatDimensions(selectedNode)}
               />
-              <InfoTile label="상태" value={selectedNode.status} />
+              <InfoTile label="상태" value={STATUS_LABELS[selectedNode.status]} />
             </div>
           </div>
         ) : (

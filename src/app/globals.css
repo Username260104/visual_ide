@@ -101,12 +101,14 @@
     --edge-default: #585858;
     --edge-hover: #007fd4;
 
-    /* Node Status Colors */
-    --status-unclassified: #858585;
-    --status-reviewing: #dcdcaa;
-    --status-promising: #4ec9b0;
-    --status-final: #6a9955;
-    --status-dropped: #f44747;
+    /* Feedback */
+    --feedback-success: #6a9955;
+    --feedback-error: #f44747;
+    --status-unclassified: var(--text-muted);
+    --status-reviewing: var(--text-muted);
+    --status-promising: var(--text-muted);
+    --status-final: var(--feedback-success);
+    --status-dropped: var(--feedback-error);
 
     /* Interactive */
     --accent-color: #007acc;

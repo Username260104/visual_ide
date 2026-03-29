@@ -63,7 +63,7 @@ export function Sidebar() {
   const directionCounts = useMemo(
     () =>
       nodeList.reduce<Record<string, number>>((counts, node) => {
-        const key = node.directionId ?? '__unclassified__';
+        const key = node.directionId ?? '__unassigned__';
         counts[key] = (counts[key] ?? 0) + 1;
         return counts;
       }, {}),
@@ -75,7 +75,7 @@ export function Sidebar() {
   );
 
   const nodeCount = nodeList.length;
-  const unclassifiedCount = directionCounts.__unclassified__ ?? 0;
+  const unclassifiedCount = directionCounts.__unassigned__ ?? 0;
   const deleteTargetDirection = deleteTargetId ? directions[deleteTargetId] : null;
 
   useEffect(() => {
@@ -164,11 +164,10 @@ export function Sidebar() {
             />
 
             <BranchFilterRow
-              label="미분류"
+              label="브랜치 없음"
               count={unclassifiedCount}
-              active={branchFilter.kind === 'unclassified'}
-              dotColor="var(--status-unclassified)"
-              onClick={() => setBranchFilter({ kind: 'unclassified' })}
+              active={branchFilter.kind === 'unassigned'}
+              onClick={() => setBranchFilter({ kind: 'unassigned' })}
             />
 
             {directionList.map((direction) => {
@@ -276,7 +275,7 @@ export function Sidebar() {
         consequences={
           deleteTargetDirection
             ? [
-                '연결된 노드는 모두 미분류로 이동합니다.',
+                '연결된 노드는 모두 브랜치 없음으로 이동합니다.',
                 '이 브랜치는 목록에서 사라지고 보관함에서 복구할 수 있습니다.',
               ]
             : []
@@ -617,8 +616,8 @@ function getBranchFilterLabel(
   directions: Record<string, { name: string }>
 ) {
   switch (branchFilter.kind) {
-    case 'unclassified':
-      return '미분류';
+    case 'unassigned':
+      return '브랜치 없음';
     case 'direction':
       return directions[branchFilter.directionId]?.name ?? '선택 브랜치';
     case 'all':

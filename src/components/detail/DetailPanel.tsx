@@ -11,14 +11,14 @@ import {
 import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
 import { ManualEventComposer } from '@/components/activity/ManualEventComposer';
 import { StrategyContextCard } from '@/components/context/StrategyContextCard';
-import { STATUS_COLORS, STATUS_LABELS } from '@/lib/constants';
+import { STATUS_LABELS, TYPE_LABELS } from '@/lib/constants';
 import { collectDescendantIds } from '@/lib/nodeTree';
 import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
 import {
   getNodeDisplayPrompt,
   getPromptSourceLabel,
 } from '@/lib/promptProvenance';
-import type { Direction, NodeData, NodeStatus } from '@/lib/types';
+import type { Direction, NodeData, NodeStatus, NodeType } from '@/lib/types';
 import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
 import {
@@ -28,7 +28,8 @@ import {
 } from '@/stores/uiStore';
 import { DestructiveActionDialog } from '@/components/ui/DestructiveActionDialog';
 import { ReparentNodeDialog } from '@/components/graph/ReparentNodeDialog';
-import { StatusSelector, requiresStatusReason } from './StatusSelector';
+import { StatusSelector } from './StatusSelector';
+import { TypeSelector } from './TypeSelector';
 import { VariationPanel } from './VariationPanel';
 
 const COPY = {
@@ -38,7 +39,7 @@ const COPY = {
   archive: '보관',
   goToParent: '상위로 이동',
   direction: '브랜치',
-  unclassified: '미분류',
+  unclassified: '브랜치 없음',
   lineage: '계보',
   root: '루트',
   parent: '상위',
@@ -191,10 +192,7 @@ export function DetailPanel() {
   const handleStatusChange = (status: NodeStatus) => {
     void updateNode(
       node.id,
-      {
-        status,
-        statusReason: requiresStatusReason(status) ? node.statusReason : null,
-      },
+      { status },
       {
         rollbackOnError: true,
         feedback: {
@@ -207,8 +205,20 @@ export function DetailPanel() {
     );
   };
 
-  const handleStatusReasonChange = (statusReason: string | null) => {
-    void updateNode(node.id, { statusReason });
+  const handleTypeChange = (nodeType: NodeType) => {
+    void updateNode(
+      node.id,
+      { nodeType },
+      {
+        rollbackOnError: true,
+        feedback: {
+          action: 'type',
+          savingMessage: '유형 저장 중...',
+          successMessage: '유형이 저장되었습니다.',
+          errorMessage: '유형을 저장하지 못했습니다.',
+        },
+      }
+    );
   };
 
   const handleDirectionChange = (directionId: string | null) => {
@@ -323,12 +333,9 @@ export function DetailPanel() {
           </div>
         </PanelSection>
 
-        <StatusSelector
-          status={node.status}
-          statusReason={node.statusReason}
-          onStatusChange={handleStatusChange}
-          onStatusReasonChange={handleStatusReasonChange}
-        />
+        <TypeSelector nodeType={node.nodeType} onTypeChange={handleTypeChange} />
+
+        <StatusSelector status={node.status} onStatusChange={handleStatusChange} />
 
         <DirectionSection
           directionId={node.directionId}
@@ -418,7 +425,7 @@ export function DetailPanel() {
                 `전체 후손 ${archiveImpact.descendantCount}개`,
                 node.directionId
                   ? '현재 브랜치 연결 정보가 함께 해제됩니다.'
-                  : '미분류 이미지입니다.',
+                  : '브랜치가 지정되지 않은 이미지입니다.',
               ]
             : []
         }
@@ -525,13 +532,13 @@ function NodePreview({
         </span>
         <span
           className="rounded px-2 py-1 text-[11px] font-medium"
-          style={{
-            backgroundColor: STATUS_COLORS[node.status],
-            color:
-              node.status === 'reviewing'
-                ? 'var(--bg-base)'
-                : 'var(--text-inverse)',
-          }}
+          style={getPreviewBadgeStyle()}
+        >
+          {TYPE_LABELS[node.nodeType]}
+        </span>
+        <span
+          className="rounded px-2 py-1 text-[11px] font-medium"
+          style={getPreviewBadgeStyle()}
         >
           {STATUS_LABELS[node.status]}
         </span>
@@ -610,8 +617,8 @@ function LineageSection({
             <span
               className="rounded px-1.5 py-0.5 text-[10px]"
               style={{
-                backgroundColor: 'var(--accent-subtle)',
-                color: 'var(--text-accent)',
+            backgroundColor: 'var(--accent-subtle)',
+            color: 'var(--text-accent)',
               }}
             >
               {COPY.root}
@@ -802,7 +809,7 @@ function ActionButton({
       : tone === 'danger'
         ? {
             backgroundColor: 'var(--bg-surface)',
-            color: 'var(--status-dropped)',
+            color: 'var(--feedback-error)',
             border: '1px solid var(--border-default)',
           }
         : {
@@ -874,7 +881,7 @@ function getNoteMeta(
   if (feedback?.status === 'error') {
     return {
       message: feedback.message,
-      color: 'var(--status-dropped)',
+      color: 'var(--feedback-error)',
     };
   }
 
@@ -888,11 +895,19 @@ function getNoteMeta(
   if (feedback?.status === 'saved') {
     return {
       message: feedback.message,
-      color: 'var(--status-final)',
+      color: 'var(--feedback-success)',
     };
   }
 
   return null;
+}
+
+function getPreviewBadgeStyle() {
+  return {
+    backgroundColor: 'rgba(0, 0, 0, 0.62)',
+    color: 'var(--text-inverse)',
+    backdropFilter: 'blur(4px)',
+  };
 }
 
 

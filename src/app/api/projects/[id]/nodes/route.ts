@@ -17,6 +17,14 @@ async function findActiveDirection(projectId: string, directionId: string) {
   });
 }
 
+function getNodeSource(value: unknown) {
+  return value === 'ai-generated' ? 'ai-generated' : 'imported';
+}
+
+function getDefaultNodeType(source: string) {
+  return source === 'ai-generated' ? 'main' : 'reference';
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -87,6 +95,8 @@ export async function POST(
     }
   }
 
+  const source = getNodeSource(body.source);
+  const nodeType = body.nodeType ?? getDefaultNodeType(source);
   const resolvedPrompt = body.resolvedPrompt ?? body.prompt ?? null;
   const userIntent = body.userIntent ?? null;
   const node = await withNodeOrdinalRetry(() =>
@@ -106,7 +116,7 @@ export async function POST(
           imageUrl: body.imageUrl ?? '',
           parentNodeId: body.parentNodeId ?? null,
           directionId: body.directionId ?? null,
-          source: body.source ?? 'imported',
+          source,
           prompt: resolvedPrompt,
           userIntent,
           resolvedPrompt,
@@ -119,7 +129,8 @@ export async function POST(
           intentTags: body.intentTags ?? [],
           changeTags: body.changeTags ?? [],
           note: body.note ?? '',
-          status: body.status ?? 'unclassified',
+          nodeType,
+          status: body.status ?? 'reviewing',
           statusReason: body.statusReason ?? null,
           nodeOrdinal: nextNodeOrdinal,
           versionNumber: count + 1,
@@ -139,6 +150,7 @@ export async function POST(
           parentNodeId: createdNode.parentNodeId,
           directionId: createdNode.directionId,
           source: createdNode.source,
+          nodeType: createdNode.nodeType,
           status: createdNode.status,
           nodeOrdinal: createdNode.nodeOrdinal,
           promptSource: createdNode.promptSource,

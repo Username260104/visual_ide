@@ -21,6 +21,7 @@ export interface ImageBridgeMetadataExport {
     intentTags: string[];
     changeTags: string[];
     note: string;
+    nodeType: NodeData['nodeType'];
     status: NodeData['status'];
     statusReason: string | null;
     parentNodeId: string | null;
@@ -61,6 +62,7 @@ export function buildImageBridgeMetadataExport(
       intentTags: [...node.intentTags],
       changeTags: [...node.changeTags],
       note: node.note,
+      nodeType: node.nodeType,
       status: node.status,
       statusReason: node.statusReason ?? null,
       parentNodeId: node.parentNodeId,

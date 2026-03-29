@@ -40,7 +40,7 @@ export function FullscreenImageViewer({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="\uC774\uBBF8\uC9C0 \uD06C\uAC8C \uBCF4\uAE30"
+      aria-label="이미지 크게 보기"
     >
       <div className="relative flex h-full w-full items-center justify-center p-6 sm:p-10">
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-4 sm:p-6">
@@ -68,7 +68,7 @@ export function FullscreenImageViewer({
               backdropFilter: 'blur(10px)',
             }}
             onClick={onClose}
-            aria-label="\uB2EB\uAE30"
+            aria-label="닫기"
           >
             <X className="h-5 w-5" />
           </button>
@@ -105,5 +105,5 @@ function getResolutionLabel(node: NodeData) {
     return node.aspectRatio;
   }
 
-  return '\uC6D0\uBCF8 \uC774\uBBF8\uC9C0';
+  return '원본 이미지';
 }

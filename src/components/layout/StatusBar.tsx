@@ -104,14 +104,14 @@ function getStatusBarTheme(entry: SaveFeedbackEntry | null) {
 
   if (entry.status === 'error') {
     return {
-      backgroundColor: 'var(--status-dropped)',
+      backgroundColor: 'var(--feedback-error)',
       color: 'var(--text-inverse)',
     };
   }
 
   if (entry.status === 'saved') {
     return {
-      backgroundColor: 'var(--status-final)',
+      backgroundColor: 'var(--feedback-success)',
       color: 'var(--text-inverse)',
     };
   }

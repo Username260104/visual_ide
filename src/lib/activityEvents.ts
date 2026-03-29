@@ -6,11 +6,16 @@ import type {
 } from './types';
 
 const STATUS_LABELS: Record<string, string> = {
-  unclassified: '미분류',
   reviewing: '검토 중',
   promising: '유망',
   final: '최종',
-  dropped: '드롭',
+  dropped: '탈락',
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  moodboard: '무드보드',
+  reference: '레퍼런스',
+  main: '메인',
 };
 
 export interface ActivityEventWriteInput {
@@ -63,7 +68,7 @@ function buildActivityEventSummary(input: ActivityEventWriteInput) {
     case 'node-created':
       return `${nodeLabel} 생성`;
     case 'node-reparented':
-      return `${nodeLabel} 상위 변경`;
+      return `${nodeLabel} 계보 변경`;
     case 'node-status-changed': {
       const fromStatus = getStatusLabel(getString(payload, 'fromStatus'));
       const toStatus = getStatusLabel(getString(payload, 'toStatus'));
@@ -72,10 +77,20 @@ function buildActivityEventSummary(input: ActivityEventWriteInput) {
         return `${nodeLabel} 상태 변경 ${fromStatus} -> ${toStatus}`;
       }
 
-      return `${nodeLabel} 상태 사유 수정`;
+      return `${nodeLabel} 상태 수정`;
+    }
+    case 'node-type-changed': {
+      const fromType = getNodeTypeLabel(getString(payload, 'fromType'));
+      const toType = getNodeTypeLabel(getString(payload, 'toType'));
+
+      if (fromType && toType && fromType !== toType) {
+        return `${nodeLabel} 유형 변경 ${fromType} -> ${toType}`;
+      }
+
+      return `${nodeLabel} 유형 수정`;
     }
     case 'node-direction-changed':
-      return `${nodeLabel} 방향 변경`;
+      return `${nodeLabel} 브랜치 변경`;
     case 'node-note-saved':
       return `${nodeLabel} 메모 저장`;
     case 'node-archived':
@@ -97,11 +112,11 @@ function buildActivityEventSummary(input: ActivityEventWriteInput) {
     case 'comparison-recorded':
       return '비교 로그';
     case 'prompt-diff-summarized':
-      return '프롬프트 변화 요약';
+      return '프롬프트 변경 요약';
     case 'brief-updated':
       return '브리프 업데이트';
     case 'direction-thesis-updated':
-      return '방향 가설 업데이트';
+      return '브랜치 전략 업데이트';
     default:
       return null;
   }
@@ -116,7 +131,7 @@ function buildFeedbackSummary(
   const text = truncateText(getString(payload, 'text'));
 
   if (text) {
-    return `${sourceLabel} 피드백: ${text}`;
+    return `${sourceLabel} 피드백 ${text}`;
   }
 
   return `${sourceLabel} 피드백 로그`;
@@ -169,6 +184,14 @@ function getStatusLabel(status: string | null) {
   return STATUS_LABELS[status] ?? status;
 }
 
+function getNodeTypeLabel(nodeType: string | null) {
+  if (!nodeType) {
+    return null;
+  }
+
+  return TYPE_LABELS[nodeType] ?? nodeType;
+}
+
 function getActorTypeLabel(actorType: ActivityEventActorType | null | undefined) {
   switch (actorType) {
     case 'client':
@@ -208,5 +231,5 @@ function truncateText(value: string | null, maxLength: number = 48) {
     return value;
   }
 
-  return `${value.slice(0, maxLength - 1)}…`;
+  return `${value.slice(0, maxLength - 1)}...`;
 }

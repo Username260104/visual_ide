@@ -80,8 +80,9 @@ model Node {
   changeTags String[] @default([]) @map("change_tags")
   note       String   @default("")
 
-  // Status
-  status       String  @default("unclassified")
+  // Role and status
+  nodeType     String  @default("reference") @map("node_type")
+  status       String  @default("reviewing")
   statusReason String? @map("status_reason")
 
   // Auto
