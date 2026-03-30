@@ -19,9 +19,11 @@ export async function GET(request: NextRequest) {
     orderBy: { updatedAt: 'desc' },
   });
 
-  const serializedProjects = await Promise.all(
-    projects.map((project) => mapProjectWithActiveCounts(project))
-  );
+  const serializedProjects = [];
+
+  for (const project of projects) {
+    serializedProjects.push(await mapProjectWithActiveCounts(project));
+  }
 
   return NextResponse.json(serializedProjects);
 }

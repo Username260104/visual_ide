@@ -12,7 +12,7 @@ export async function findActiveProject(projectId: string) {
 }
 
 async function getActiveProjectSnapshot(projectId: string) {
-  const [nodes, directions, latestNode] = await prisma.$transaction([
+  const [nodes, directions, latestNode] = await Promise.all([
     prisma.node.count({
       where: {
         projectId,

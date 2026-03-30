@@ -54,7 +54,7 @@ export default function ProjectListPage() {
             VIDE
           </h1>
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Visual IDE for AI Images
+            Visual IDE
           </span>
         </div>
       </header>

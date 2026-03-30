@@ -6,7 +6,7 @@ import { useNodeStore } from '@/stores/nodeStore';
 import { useUIStore } from '@/stores/uiStore';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
-const NODE_SYNC_INTERVAL_MS = 2500;
+const NODE_SYNC_INTERVAL_MS = 5000;
 
 export function useProjectLoader(projectId: string) {
   const [loadState, setLoadState] = useState<LoadState>('idle');
