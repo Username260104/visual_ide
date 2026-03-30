@@ -1,10 +1,11 @@
-'use client';
+﻿'use client';
 
 import {
   Archive,
   ArrowLeftRight,
   Compass,
   GitBranch,
+  MessageSquare,
   Settings2,
   ScrollText,
   type LucideIcon,
@@ -19,6 +20,7 @@ const SIDEBAR_TABS: Array<{
   { id: 'image-bridge', label: '이미지 브릿지', icon: ArrowLeftRight },
   { id: 'branches', label: '브랜치', icon: GitBranch },
   { id: 'strategy', label: '전략', icon: Compass },
+  { id: 'copilot', label: '코파일럿', icon: MessageSquare },
   { id: 'activity', label: '로그', icon: ScrollText },
   { id: 'archive', label: '보관함', icon: Archive },
 ];

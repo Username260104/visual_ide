@@ -14,6 +14,7 @@ export type SidebarTab =
   | 'image-bridge'
   | 'branches'
   | 'strategy'
+  | 'copilot'
   | 'activity'
   | 'archive'
   | 'settings';
@@ -241,5 +242,3 @@ export const useUIStore = create<UIStore>((set) => ({
     });
   },
 }));
-
-

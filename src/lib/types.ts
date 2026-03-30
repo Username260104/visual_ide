@@ -1,4 +1,4 @@
-export type NodeStatus = 'reviewing' | 'promising' | 'final' | 'dropped';
+﻿export type NodeStatus = 'reviewing' | 'promising' | 'final' | 'dropped';
 export type NodeType = 'moodboard' | 'reference' | 'main';
 
 export type NodeSource = 'ai-generated' | 'imported';
@@ -175,4 +175,25 @@ export interface StagingBatch {
   note: string | null;
   createdAt: number;
   candidates: StagingCandidate[];
+}
+
+export type CopilotAnswerConfidence =
+  | 'grounded'
+  | 'partial'
+  | 'insufficient';
+
+export type CopilotCitationEntityType = 'project' | 'direction' | 'node';
+
+export interface CopilotCitation {
+  id: string;
+  label: string;
+  entityType: CopilotCitationEntityType;
+  entityId: string;
+}
+
+export interface CopilotAnswer {
+  answer: string;
+  confidence: CopilotAnswerConfidence;
+  citations: CopilotCitation[];
+  missingInfo: string[];
 }

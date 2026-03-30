@@ -18,12 +18,14 @@ import { type BranchFilter, type SidebarTab, useUIStore } from '@/stores/uiStore
 import { ArchiveSettingsPanel } from './ArchiveSettingsPanel';
 import { DirectionDialog } from './DirectionDialog';
 import { ImageBridgePanel } from './ImageBridgePanel';
+import { ProjectCopilotPanel } from './ProjectCopilotPanel';
 import { StrategySettingsPanel } from './StrategySettingsPanel';
 
 const SIDEBAR_TAB_LABELS: Record<SidebarTab, string> = {
   'image-bridge': '이미지 브릿지',
   branches: '브랜치',
   strategy: '전략',
+  copilot: '코파일럿',
   activity: '로그',
   archive: '보관함',
   settings: '설정',
@@ -129,30 +131,30 @@ export function Sidebar() {
         프로젝트 목록
       </Link>
 
-      <div
-        className="flex h-9 shrink-0 items-center justify-between px-4 text-xs font-semibold uppercase tracking-wider"
-        style={{
-          backgroundColor: 'var(--sidebar-header-bg)',
-          color: 'var(--sidebar-header-fg)',
-        }}
-      >
-        <span>{SIDEBAR_TAB_LABELS[activeSidebarTab]}</span>
-        {activeSidebarTab === 'branches' && (
-          <button
-            className="text-base leading-none transition-opacity hover:opacity-80"
-            style={{ color: 'var(--text-accent)' }}
-            onClick={() => setDirectionDialogOpen(true)}
-            title="브랜치 추가"
-          >
-            +
-          </button>
-        )}
-      </div>
+      {activeSidebarTab !== 'copilot' && (
+        <div
+          className="flex h-9 shrink-0 items-center justify-between px-4 text-xs font-semibold uppercase tracking-wider"
+          style={{
+            backgroundColor: 'var(--sidebar-header-bg)',
+            color: 'var(--sidebar-header-fg)',
+          }}
+        >
+          <span>{SIDEBAR_TAB_LABELS[activeSidebarTab]}</span>
+          {activeSidebarTab === 'branches' && (
+            <button
+              className="text-base leading-none transition-opacity hover:opacity-80"
+              style={{ color: 'var(--text-accent)' }}
+              onClick={() => setDirectionDialogOpen(true)}
+              title="브랜치 추가"
+            >
+              +
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {activeSidebarTab === 'image-bridge' && (
-          <ImageBridgePanel />
-        )}
+        {activeSidebarTab === 'image-bridge' && <ImageBridgePanel />}
 
         {activeSidebarTab === 'branches' && (
           <div className="flex flex-col gap-2 p-3">
@@ -225,6 +227,8 @@ export function Sidebar() {
             <StrategySettingsPanel />
           </div>
         )}
+
+        {activeSidebarTab === 'copilot' && <ProjectCopilotPanel />}
 
         {activeSidebarTab === 'activity' && (
           <div className="flex h-full min-h-0 flex-col p-3">
@@ -625,6 +629,3 @@ function getBranchFilterLabel(
       return '전체';
   }
 }
-
-
-
