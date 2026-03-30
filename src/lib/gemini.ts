@@ -1,6 +1,7 @@
 ﻿import { GoogleGenAI } from '@google/genai';
 
 const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite-preview';
+const DEFAULT_GEMINI_API_VERSION = 'v1';
 
 let geminiClient: GoogleGenAI | null = null;
 let geminiClientKey: string | null = null;
@@ -13,7 +14,8 @@ export function getGeminiClient() {
     return null;
   }
 
-  const apiVersion = process.env.GEMINI_API_VERSION?.trim() || null;
+  const apiVersion =
+    process.env.GEMINI_API_VERSION?.trim() || DEFAULT_GEMINI_API_VERSION;
 
   if (
     geminiClient &&
