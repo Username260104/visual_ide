@@ -6,6 +6,7 @@ import { useNodeStore } from '@/stores/nodeStore';
 import { useUIStore } from '@/stores/uiStore';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
+const NODE_SYNC_INTERVAL_MS = 2500;
 
 export function useProjectLoader(projectId: string) {
   const [loadState, setLoadState] = useState<LoadState>('idle');
@@ -54,6 +55,58 @@ export function useProjectLoader(projectId: string) {
       useDirectionStore.getState().clearDirections();
     };
   }, [projectId, reloadCount]);
+
+  useEffect(() => {
+    if (loadState !== 'ready') {
+      return;
+    }
+
+    let inFlight = false;
+
+    const refreshNodes = async () => {
+      if (inFlight) {
+        return;
+      }
+
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      if (useNodeStore.getState().projectId !== projectId) {
+        return;
+      }
+
+      const hasPendingNodeSave = Object.values(
+        useUIStore.getState().saveFeedbackByKey
+      ).some(
+        (entry) =>
+          entry.entityType === 'node' &&
+          entry.status === 'saving'
+      );
+
+      if (hasPendingNodeSave) {
+        return;
+      }
+
+      inFlight = true;
+
+      try {
+        await useNodeStore.getState().loadNodes(projectId, { silent: true });
+      } catch (error) {
+        console.error('Failed to refresh nodes:', error);
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void refreshNodes();
+    }, NODE_SYNC_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [loadState, projectId]);
 
   return {
     isReady: loadState === 'ready',

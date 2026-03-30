@@ -24,7 +24,7 @@ interface NodeStore {
   projectId: string | null;
   isLoading: boolean;
 
-  loadNodes: (projectId: string) => Promise<void>;
+  loadNodes: (projectId: string, options?: { silent?: boolean }) => Promise<void>;
   clearNodes: () => void;
 
   addNode: (node: Partial<NodeData>) => Promise<NodeData>;
@@ -53,15 +53,29 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
   projectId: null,
   isLoading: false,
 
-  loadNodes: async (projectId) => {
-    set({ isLoading: true, projectId });
+  loadNodes: async (projectId, options) => {
+    if (options?.silent) {
+      set({ projectId });
+    } else {
+      set({ isLoading: true, projectId });
+    }
 
     try {
       const nodes = await fetchJson<NodeData[]>(`/api/projects/${projectId}/nodes`);
-      set({ nodes: indexById(nodes), isLoading: false });
+      set((state) =>
+        state.projectId === projectId
+          ? {
+              nodes: indexById(nodes),
+              projectId,
+              isLoading: options?.silent ? state.isLoading : false,
+            }
+          : state
+      );
     } catch (error) {
       console.error('Failed to load nodes:', error);
-      set({ isLoading: false });
+      if (!options?.silent) {
+        set((state) => (state.projectId === projectId ? { isLoading: false } : state));
+      }
       throw error;
     }
   },

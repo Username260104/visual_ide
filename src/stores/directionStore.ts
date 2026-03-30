@@ -28,10 +28,14 @@ export const useDirectionStore = create<DirectionStore>((set, get) => ({
       const directions = await fetchJson<Direction[]>(
         `/api/projects/${projectId}/directions`
       );
-      set({ directions: indexById(directions), isLoading: false });
+      set((state) =>
+        state.projectId === projectId
+          ? { directions: indexById(directions), isLoading: false }
+          : state
+      );
     } catch (error) {
       console.error('Failed to load directions:', error);
-      set({ isLoading: false });
+      set((state) => (state.projectId === projectId ? { isLoading: false } : state));
       throw error;
     }
   },
