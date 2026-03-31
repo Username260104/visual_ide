@@ -76,6 +76,10 @@ export function useProjectLoader(projectId: string) {
         return;
       }
 
+      if (useNodeStore.getState().hasPendingMutations()) {
+        return;
+      }
+
       const hasPendingNodeSave = Object.values(
         useUIStore.getState().saveFeedbackByKey
       ).some(
