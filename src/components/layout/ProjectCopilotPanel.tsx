@@ -14,10 +14,15 @@ import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
 import type {
   CopilotAnswer,
   CopilotAnswerConfidence,
+  CopilotClientContext,
   CopilotCitation,
+  CopilotLiveStagingBatch,
+  StagingBatch,
+  StagingReviewDraft,
 } from '@/lib/types';
 import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
+import { useStagingStore } from '@/stores/stagingStore';
 import { useUIStore } from '@/stores/uiStore';
 
 interface ChatMessage {
@@ -42,12 +47,18 @@ export function ProjectCopilotPanel() {
   const nodes = useNodeStore((state) => state.nodes);
   const nodeProjectId = useNodeStore((state) => state.projectId);
   const directionProjectId = useDirectionStore((state) => state.projectId);
+  const stagingBatches = useStagingStore((state) => state.batches);
+  const reviewDrafts = useStagingStore((state) => state.reviewDrafts);
 
   const projectId = nodeProjectId ?? directionProjectId;
   const selectedNode = selectedNodeId ? nodes[selectedNodeId] ?? null : null;
   const selectedNodeLabel = selectedNode
     ? getNodeSequenceLabel(selectedNode)
     : null;
+  const clientContext = useMemo(
+    () => buildCopilotClientContext(projectId, stagingBatches, reviewDrafts),
+    [projectId, reviewDrafts, stagingBatches]
+  );
 
   const [draft, setDraft] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,7 +72,7 @@ export function ProjectCopilotPanel() {
     () =>
       selectedNodeLabel
         ? `${selectedNodeLabel} 노드를 함께 참고합니다.`
-        : '프로젝트 전체 입력 데이터를 바탕으로 답변합니다.',
+        : '프로젝트 입력과 현재 검토 중인 생성 결과를 바탕으로 답변합니다.',
     [selectedNodeLabel]
   );
 
@@ -108,6 +119,7 @@ export function ProjectCopilotPanel() {
         body: JSON.stringify({
           question,
           selectedNodeId,
+          clientContext,
         }),
       });
 
@@ -385,11 +397,60 @@ function buildIntroMessage(): ChatMessage {
   return {
     id: 'assistant-intro',
     role: 'assistant',
-    text: '프로젝트 내부에 입력된 전략, 브랜치, 노드 메모를 바탕으로 답변해 드릴게요.',
+    text: '프로젝트 전략, 브랜치, 노드 메모와 현재 검토 중인 생성 결과를 바탕으로 답변해 드릴게요.',
     citations: [],
     missingInfo: [],
     confidence: null,
   };
+}
+
+function buildCopilotClientContext(
+  projectId: string | null,
+  batches: StagingBatch[],
+  reviewDrafts: Record<string, StagingReviewDraft>
+): CopilotClientContext | null {
+  if (!projectId) {
+    return null;
+  }
+
+  const liveStagingBatches: CopilotLiveStagingBatch[] = batches
+    .filter((batch) => batch.projectId === projectId)
+    .sort((left, right) => right.createdAt - left.createdAt)
+    .slice(0, 6)
+    .map((batch) => ({
+      batchId: batch.id,
+      projectId: batch.projectId,
+      sourceKind: batch.sourceKind,
+      parentNodeId: batch.parentNodeId,
+      directionId: batch.directionId,
+      userIntent: batch.userIntent,
+      resolvedPrompt: batch.resolvedPrompt,
+      promptSource: batch.promptSource ?? null,
+      modelLabel: batch.modelLabel,
+      aspectRatio: batch.aspectRatio,
+      variationMode: batch.variationMode,
+      hasSourceImage: Boolean(batch.sourceImageUrl),
+      hasMaskImage: Boolean(batch.maskImageUrl),
+      intentTags: [...batch.intentTags],
+      changeTags: [...batch.changeTags],
+      note: batch.note,
+      createdAt: batch.createdAt,
+      candidates: batch.candidates.map((candidate) => ({
+        id: candidate.id,
+        index: candidate.index,
+        status: candidate.status,
+      })),
+      reviewDraft: reviewDrafts[batch.id]
+        ? {
+            batchId: reviewDrafts[batch.id].batchId,
+            selectedCandidateIds: [...reviewDrafts[batch.id].selectedCandidateIds],
+            rationale: reviewDrafts[batch.id].rationale,
+            updatedAt: reviewDrafts[batch.id].updatedAt,
+          }
+        : null,
+    }));
+
+  return { liveStagingBatches };
 }
 
 function getConfidenceLabel(confidence: CopilotAnswerConfidence) {

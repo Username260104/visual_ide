@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type {
   PromptSource,
   StagingBatch,
+  StagingReviewDraft,
   StagingSourceKind,
   VariationEditMode,
 } from '@/lib/types';
@@ -30,9 +31,19 @@ interface StageBatchInput {
 
 interface StagingStore {
   batches: StagingBatch[];
+  reviewDrafts: Record<string, StagingReviewDraft>;
   isTrayOpen: boolean;
   stageBatch: (input: StageBatchInput) => StagingBatch;
   setTrayOpen: (open: boolean) => void;
+  ensureReviewDraft: (batchId: string) => void;
+  setReviewDraftRationale: (batchId: string, rationale: string) => void;
+  toggleReviewDraftCandidateSelection: (
+    batchId: string,
+    candidateId: string
+  ) => void;
+  selectAllReviewDraftCandidates: (batchId: string) => void;
+  clearReviewDraftSelection: (batchId: string) => void;
+  clearReviewDraft: (batchId: string) => void;
   toggleCandidateSelection: (batchId: string, candidateId: string) => void;
   selectAllCandidates: (batchId: string) => void;
   clearCandidateSelection: (batchId: string) => void;
@@ -45,6 +56,7 @@ interface StagingStore {
 
 export const useStagingStore = create<StagingStore>((set) => ({
   batches: [],
+  reviewDrafts: {},
   isTrayOpen: true,
 
   stageBatch: (input) => {
@@ -87,6 +99,120 @@ export const useStagingStore = create<StagingStore>((set) => ({
   },
 
   setTrayOpen: (open) => set({ isTrayOpen: open }),
+
+  ensureReviewDraft: (batchId) =>
+    set((state) => {
+      const batch = state.batches.find((item) => item.id === batchId);
+      if (!batch || state.reviewDrafts[batchId]) {
+        return state;
+      }
+
+      return {
+        reviewDrafts: {
+          ...state.reviewDrafts,
+          [batchId]: createInitialReviewDraft(batch),
+        },
+      };
+    }),
+
+  setReviewDraftRationale: (batchId, rationale) =>
+    set((state) => {
+      const batch = state.batches.find((item) => item.id === batchId);
+      if (!batch) {
+        return state;
+      }
+
+      const currentDraft = getOrCreateReviewDraft(state.reviewDrafts, batch);
+      if (currentDraft.rationale === rationale) {
+        return state;
+      }
+
+      return {
+        reviewDrafts: {
+          ...state.reviewDrafts,
+          [batchId]: {
+            ...currentDraft,
+            rationale,
+            updatedAt: Date.now(),
+          },
+        },
+      };
+    }),
+
+  toggleReviewDraftCandidateSelection: (batchId, candidateId) =>
+    set((state) => {
+      const batch = state.batches.find((item) => item.id === batchId);
+      if (!batch || !batch.candidates.some((candidate) => candidate.id === candidateId)) {
+        return state;
+      }
+
+      const currentDraft = getOrCreateReviewDraft(state.reviewDrafts, batch);
+      const nextSelectedIds = currentDraft.selectedCandidateIds.includes(candidateId)
+        ? currentDraft.selectedCandidateIds.filter((id) => id !== candidateId)
+        : [...currentDraft.selectedCandidateIds, candidateId];
+
+      return {
+        reviewDrafts: {
+          ...state.reviewDrafts,
+          [batchId]: {
+            ...currentDraft,
+            selectedCandidateIds: normalizeCandidateIds(batch, nextSelectedIds),
+            updatedAt: Date.now(),
+          },
+        },
+      };
+    }),
+
+  selectAllReviewDraftCandidates: (batchId) =>
+    set((state) => {
+      const batch = state.batches.find((item) => item.id === batchId);
+      if (!batch) {
+        return state;
+      }
+
+      const currentDraft = getOrCreateReviewDraft(state.reviewDrafts, batch);
+      const nextSelectedIds = getSelectableCandidateIds(batch);
+
+      return {
+        reviewDrafts: {
+          ...state.reviewDrafts,
+          [batchId]: {
+            ...currentDraft,
+            selectedCandidateIds: nextSelectedIds,
+            updatedAt: Date.now(),
+          },
+        },
+      };
+    }),
+
+  clearReviewDraftSelection: (batchId) =>
+    set((state) => {
+      const batch = state.batches.find((item) => item.id === batchId);
+      if (!batch) {
+        return state;
+      }
+
+      const currentDraft = getOrCreateReviewDraft(state.reviewDrafts, batch);
+      if (currentDraft.selectedCandidateIds.length === 0) {
+        return state;
+      }
+
+      return {
+        reviewDrafts: {
+          ...state.reviewDrafts,
+          [batchId]: {
+            ...currentDraft,
+            selectedCandidateIds: [],
+            updatedAt: Date.now(),
+          },
+        },
+      };
+    }),
+
+  clearReviewDraft: (batchId) =>
+    set((state) => ({
+      reviewDrafts: omitReviewDraft(state.reviewDrafts, batchId),
+    })),
 
   toggleCandidateSelection: (batchId, candidateId) =>
     set((state) => ({
@@ -143,7 +269,7 @@ export const useStagingStore = create<StagingStore>((set) => ({
 
   discardSelectedCandidates: (batchId) =>
     set((state) => ({
-      batches: state.batches.flatMap((batch) => {
+      ...applyBatchMutation(state, (batch) => {
         if (batch.id !== batchId) {
           return [batch];
         }
@@ -166,19 +292,28 @@ export const useStagingStore = create<StagingStore>((set) => ({
   discardBatch: (batchId) =>
     set((state) => ({
       batches: state.batches.filter((batch) => batch.id !== batchId),
+      reviewDrafts: omitReviewDraft(state.reviewDrafts, batchId),
     })),
 
   clearBatch: (batchId) =>
     set((state) => ({
       batches: state.batches.filter((batch) => batch.id !== batchId),
+      reviewDrafts: omitReviewDraft(state.reviewDrafts, batchId),
     })),
 
   clearProjectBatches: (projectId) =>
-    set((state) => ({
-      batches: state.batches.filter((batch) => batch.projectId !== projectId),
-    })),
+    set((state) => {
+      const removedBatchIds = state.batches
+        .filter((batch) => batch.projectId === projectId)
+        .map((batch) => batch.id);
 
-  clearBatches: () => set({ batches: [] }),
+      return {
+        batches: state.batches.filter((batch) => batch.projectId !== projectId),
+        reviewDrafts: omitReviewDrafts(state.reviewDrafts, removedBatchIds),
+      };
+    }),
+
+  clearBatches: () => set({ batches: [], reviewDrafts: {} }),
 }));
 
 function createStagingId(prefix: string) {
@@ -204,4 +339,95 @@ function normalizeNullableNumber(value: number | null | undefined) {
 
 function hasVisibleCandidates(batch: StagingBatch) {
   return batch.candidates.some((candidate) => candidate.status === 'staged');
+}
+
+function createInitialReviewDraft(batch: StagingBatch): StagingReviewDraft {
+  return {
+    batchId: batch.id,
+    selectedCandidateIds: getSelectableCandidateIds(batch),
+    rationale: '',
+    updatedAt: Date.now(),
+  };
+}
+
+function getOrCreateReviewDraft(
+  reviewDrafts: Record<string, StagingReviewDraft>,
+  batch: StagingBatch
+) {
+  const existing = reviewDrafts[batch.id];
+  if (!existing) {
+    return createInitialReviewDraft(batch);
+  }
+
+  return {
+    ...existing,
+    selectedCandidateIds: normalizeCandidateIds(batch, existing.selectedCandidateIds),
+  };
+}
+
+function getSelectableCandidateIds(batch: StagingBatch) {
+  return batch.candidates
+    .filter((candidate) => candidate.status === 'staged')
+    .map((candidate) => candidate.id);
+}
+
+function normalizeCandidateIds(batch: StagingBatch, candidateIds: string[]) {
+  const selectableIds = new Set(getSelectableCandidateIds(batch));
+  return Array.from(
+    new Set(candidateIds.filter((candidateId) => selectableIds.has(candidateId)))
+  );
+}
+
+function applyBatchMutation(
+  state: Pick<StagingStore, 'batches' | 'reviewDrafts'>,
+  mutate: (batch: StagingBatch) => StagingBatch[]
+) {
+  const nextBatches = state.batches.flatMap((batch) => mutate(batch));
+  const nextReviewDrafts: Record<string, StagingReviewDraft> = {};
+
+  nextBatches.forEach((batch) => {
+    const existingDraft = state.reviewDrafts[batch.id];
+    if (!existingDraft) {
+      return;
+    }
+
+    nextReviewDrafts[batch.id] = {
+      ...existingDraft,
+      selectedCandidateIds: normalizeCandidateIds(batch, existingDraft.selectedCandidateIds),
+      updatedAt: Date.now(),
+    };
+  });
+
+  return {
+    batches: nextBatches,
+    reviewDrafts: nextReviewDrafts,
+  };
+}
+
+function omitReviewDraft(
+  reviewDrafts: Record<string, StagingReviewDraft>,
+  batchId: string
+) {
+  if (!reviewDrafts[batchId]) {
+    return reviewDrafts;
+  }
+
+  const nextReviewDrafts = { ...reviewDrafts };
+  delete nextReviewDrafts[batchId];
+  return nextReviewDrafts;
+}
+
+function omitReviewDrafts(
+  reviewDrafts: Record<string, StagingReviewDraft>,
+  batchIds: string[]
+) {
+  if (batchIds.length === 0) {
+    return reviewDrafts;
+  }
+
+  const nextReviewDrafts = { ...reviewDrafts };
+  batchIds.forEach((batchId) => {
+    delete nextReviewDrafts[batchId];
+  });
+  return nextReviewDrafts;
 }

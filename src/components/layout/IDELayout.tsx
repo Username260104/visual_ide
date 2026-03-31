@@ -4,8 +4,8 @@ import { ActivityBar } from './ActivityBar';
 import { Sidebar } from './Sidebar';
 import { StatusBar } from './StatusBar';
 import { DetailPanel } from '@/components/detail/DetailPanel';
+import { StagingTray } from '@/components/layout/ProjectStagingTray';
 import { StagingNavigationGuard } from '@/components/staging/StagingNavigationGuard';
-import { StagingTray } from '@/components/staging/StagingTray';
 import { WORKSPACE_MODAL_TARGET_ID } from '@/components/ui/ModalShell';
 import { GenerateDialog } from './GenerateDialog';
 

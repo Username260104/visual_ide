@@ -4,12 +4,38 @@ import { generateGeminiJson } from '@/lib/gemini';
 import type {
   CopilotAnswer,
   CopilotAnswerConfidence,
+  CopilotClientContext,
   CopilotCitation,
+  CopilotLiveStagingBatch,
+  PromptSource,
+  StagingCandidateStatus,
+  StagingSourceKind,
+  VariationEditMode,
 } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
 const MAX_QUESTION_LENGTH = 2000;
+const STAGING_SOURCE_KINDS = new Set<StagingSourceKind>([
+  'generate-dialog',
+  'variation-panel',
+]);
+const STAGING_CANDIDATE_STATUSES = new Set<StagingCandidateStatus>([
+  'staged',
+  'accepted',
+  'discarded',
+]);
+const PROMPT_SOURCES = new Set<PromptSource>([
+  'legacy',
+  'user-authored',
+  'ai-improved',
+  'variation-derived',
+]);
+const VARIATION_MODES = new Set<VariationEditMode>([
+  'prompt-only',
+  'image-to-image',
+  'inpaint',
+]);
 
 const SYSTEM_INSTRUCTION = `You are VIDE's internal project copilot.
 Answer the user's question using only the provided internal project data.
@@ -60,6 +86,7 @@ export async function POST(
     const body = await request.json();
     const question = getQuestion(body);
     const selectedNodeId = getSelectedNodeId(body);
+    const clientContext = getClientContext(body);
 
     if (!question) {
       return NextResponse.json(
@@ -82,7 +109,18 @@ export async function POST(
       );
     }
 
-    const context = await buildProjectCopilotContext(params.id, selectedNodeId);
+    if (clientContext === undefined) {
+      return NextResponse.json(
+        { error: 'clientContext is invalid' },
+        { status: 400 }
+      );
+    }
+
+    const context = await buildProjectCopilotContext(
+      params.id,
+      selectedNodeId,
+      clientContext
+    );
 
     if (context.kind === 'project-not-found') {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -152,6 +190,178 @@ function getSelectedNodeId(body: unknown) {
   return trimmed || null;
 }
 
+function getClientContext(body: unknown): CopilotClientContext | null | undefined {
+  if (typeof body !== 'object' || body === null) {
+    return null;
+  }
+
+  const clientContext = Reflect.get(body, 'clientContext');
+
+  if (clientContext === undefined || clientContext === null) {
+    return null;
+  }
+
+  if (typeof clientContext !== 'object' || Array.isArray(clientContext)) {
+    return undefined;
+  }
+
+  const liveStagingBatches = Reflect.get(clientContext, 'liveStagingBatches');
+  if (!Array.isArray(liveStagingBatches)) {
+    return undefined;
+  }
+
+  const parsedBatches = liveStagingBatches.map(parseLiveStagingBatch);
+  if (parsedBatches.some((batch) => batch === null)) {
+    return undefined;
+  }
+
+  return {
+    liveStagingBatches: parsedBatches.filter(
+      (batch): batch is CopilotLiveStagingBatch => batch !== null
+    ),
+  };
+}
+
+function parseLiveStagingBatch(value: unknown): CopilotLiveStagingBatch | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const batch = value as Record<string, unknown>;
+  const batchId = getRequiredString(batch, 'batchId', 80);
+  const projectId = getRequiredString(batch, 'projectId', 80);
+  const sourceKind = getRequiredString(batch, 'sourceKind', 40);
+  const createdAt = getRequiredNumber(batch, 'createdAt');
+  const candidatesInput = Reflect.get(batch, 'candidates');
+
+  if (
+    !batchId ||
+    !projectId ||
+    !sourceKind ||
+    !STAGING_SOURCE_KINDS.has(sourceKind as StagingSourceKind) ||
+    createdAt === null ||
+    !Array.isArray(candidatesInput)
+  ) {
+    return null;
+  }
+
+  const candidates = candidatesInput.map(parseLiveStagingCandidate);
+  if (candidates.some((candidate) => candidate === null)) {
+    return null;
+  }
+
+  const parsedCandidates = candidates.filter((candidate) => candidate !== null);
+  const reviewDraft = parseReviewDraft(
+    Reflect.get(batch, 'reviewDraft'),
+    batchId,
+    parsedCandidates.map((candidate) => candidate.id)
+  );
+  if (reviewDraft === undefined) {
+    return null;
+  }
+
+  return {
+    batchId,
+    projectId,
+    sourceKind: sourceKind as StagingSourceKind,
+    parentNodeId: getOptionalString(batch, 'parentNodeId', 80),
+    directionId: getOptionalString(batch, 'directionId', 80),
+    userIntent: getOptionalString(batch, 'userIntent', 4000),
+    resolvedPrompt: getOptionalString(batch, 'resolvedPrompt', 4000),
+    promptSource: parsePromptSource(getOptionalString(batch, 'promptSource', 40)),
+    modelLabel: getOptionalString(batch, 'modelLabel', 120),
+    aspectRatio: getOptionalString(batch, 'aspectRatio', 40),
+    variationMode: parseVariationMode(
+      getOptionalString(batch, 'variationMode', 40)
+    ),
+    hasSourceImage: getOptionalBoolean(batch, 'hasSourceImage') ?? false,
+    hasMaskImage: getOptionalBoolean(batch, 'hasMaskImage') ?? false,
+    intentTags: readStringArrayWithLimit(Reflect.get(batch, 'intentTags'), 16, 80),
+    changeTags: readStringArrayWithLimit(Reflect.get(batch, 'changeTags'), 16, 80),
+    note: getOptionalString(batch, 'note', 2000),
+    createdAt,
+    candidates: parsedCandidates,
+    reviewDraft,
+  };
+}
+
+function parseLiveStagingCandidate(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const id = getRequiredString(candidate, 'id', 80);
+  const index = getRequiredNumber(candidate, 'index');
+  const status = getRequiredString(candidate, 'status', 40);
+
+  if (
+    !id ||
+    index === null ||
+    !Number.isInteger(index) ||
+    !status ||
+    !STAGING_CANDIDATE_STATUSES.has(status as StagingCandidateStatus)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    index,
+    status: status as StagingCandidateStatus,
+  };
+}
+
+function parseReviewDraft(
+  value: unknown,
+  batchId: string,
+  candidateIds: string[]
+) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const draft = value as Record<string, unknown>;
+  const updatedAt = getRequiredNumber(draft, 'updatedAt');
+  if (updatedAt === null) {
+    return undefined;
+  }
+
+  const validCandidateIds = new Set(candidateIds);
+  const selectedCandidateIds = readStringArrayWithLimit(
+    Reflect.get(draft, 'selectedCandidateIds'),
+    candidateIds.length || 16,
+    80
+  ).filter((candidateId) => validCandidateIds.has(candidateId));
+
+  return {
+    batchId,
+    selectedCandidateIds,
+    rationale: getOptionalString(draft, 'rationale', 4000) ?? '',
+    updatedAt,
+  };
+}
+
+function parsePromptSource(value: string | null) {
+  if (!value || !PROMPT_SOURCES.has(value as PromptSource)) {
+    return null;
+  }
+
+  return value as PromptSource;
+}
+
+function parseVariationMode(value: string | null) {
+  if (!value || !VARIATION_MODES.has(value as VariationEditMode)) {
+    return null;
+  }
+
+  return value as VariationEditMode;
+}
+
 function sanitizeCopilotResponse(
   rawResponse: CopilotModelResponse,
   citationIndex: Record<string, CopilotCitation>
@@ -197,6 +407,60 @@ function readStringArray(value: unknown) {
     .filter((item): item is string => typeof item === 'string')
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function readStringArrayWithLimit(
+  value: unknown,
+  maxItems: number,
+  maxLength: number
+) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, maxItems)
+        .map((item) => item.slice(0, maxLength))
+    )
+  );
+}
+
+function getRequiredString(
+  body: Record<string, unknown>,
+  key: string,
+  maxLength: number
+) {
+  const value = getOptionalString(body, key, maxLength);
+  return value && value.trim() ? value : null;
+}
+
+function getOptionalString(
+  body: Record<string, unknown>,
+  key: string,
+  maxLength: number
+) {
+  const value = Reflect.get(body, key);
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, maxLength) : null;
+}
+
+function getRequiredNumber(body: Record<string, unknown>, key: string) {
+  const value = Reflect.get(body, key);
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function getOptionalBoolean(body: Record<string, unknown>, key: string) {
+  const value = Reflect.get(body, key);
+  return typeof value === 'boolean' ? value : null;
 }
 
 function getErrorMessage(error: unknown) {

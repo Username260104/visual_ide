@@ -177,12 +177,56 @@ export interface StagingBatch {
   candidates: StagingCandidate[];
 }
 
+export interface StagingReviewDraft {
+  batchId: string;
+  selectedCandidateIds: string[];
+  rationale: string;
+  updatedAt: number;
+}
+
+export interface CopilotLiveStagingCandidate {
+  id: string;
+  index: number;
+  status: StagingCandidateStatus;
+}
+
+export interface CopilotLiveStagingBatch {
+  batchId: string;
+  projectId: string;
+  sourceKind: StagingSourceKind;
+  parentNodeId: string | null;
+  directionId: string | null;
+  userIntent: string | null;
+  resolvedPrompt: string | null;
+  promptSource: PromptSource | null;
+  modelLabel: string | null;
+  aspectRatio: string | null;
+  variationMode: VariationEditMode | null;
+  hasSourceImage: boolean;
+  hasMaskImage: boolean;
+  intentTags: string[];
+  changeTags: string[];
+  note: string | null;
+  createdAt: number;
+  candidates: CopilotLiveStagingCandidate[];
+  reviewDraft: StagingReviewDraft | null;
+}
+
+export interface CopilotClientContext {
+  liveStagingBatches: CopilotLiveStagingBatch[];
+}
+
 export type CopilotAnswerConfidence =
   | 'grounded'
   | 'partial'
   | 'insufficient';
 
-export type CopilotCitationEntityType = 'project' | 'direction' | 'node';
+export type CopilotCitationEntityType =
+  | 'project'
+  | 'direction'
+  | 'node'
+  | 'activity-event'
+  | 'staging';
 
 export interface CopilotCitation {
   id: string;

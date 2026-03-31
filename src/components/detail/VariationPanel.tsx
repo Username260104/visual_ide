@@ -820,7 +820,7 @@ function MaskEditorDialog({
         backgroundColor: 'rgba(0, 0, 0, 0.58)',
         padding: '24px',
       }}
-      panelClassName="flex flex-col gap-4 overflow-hidden p-5"
+      panelClassName="flex min-h-0 flex-col gap-4 overflow-hidden p-5"
       panelStyle={{
         width: 'min(1120px, calc(100% - 48px))',
         height: 'min(820px, calc(100% - 48px))',
@@ -868,7 +868,7 @@ function MaskEditorDialog({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex flex-1">
         <MaskEditor
           imageUrl={imageUrl}
           brushSize={brushSize}
@@ -876,7 +876,8 @@ function MaskEditorDialog({
           onChangeStrokes={onChangeStrokes}
           onImageReady={onImageReady}
           disabled={isGenerating}
-          maxHeight="72vh"
+          fitToContainer
+          className="flex-1"
         />
       </div>
 
