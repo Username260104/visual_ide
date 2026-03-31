@@ -12,7 +12,7 @@ import {
 } from '@/lib/replicate';
 import { deleteImages, type StorageUploadResult } from '@/lib/storage';
 
-export const maxDuration = 10;
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   let temporaryMaskImagePath: string | null = null;
