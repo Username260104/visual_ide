@@ -5,6 +5,7 @@ import type {
   CopilotAnswer,
   CopilotAnswerConfidence,
   CopilotClientContext,
+  CopilotConversationMessage,
   CopilotCitation,
   CopilotLiveStagingBatch,
   PromptSource,
@@ -16,6 +17,8 @@ import type {
 export const runtime = 'nodejs';
 
 const MAX_QUESTION_LENGTH = 2000;
+const MAX_CONVERSATION_MESSAGES = 8;
+const MAX_CONVERSATION_TEXT_LENGTH = 1600;
 const STAGING_SOURCE_KINDS = new Set<StagingSourceKind>([
   'generate-dialog',
   'variation-panel',
@@ -39,6 +42,9 @@ const VARIATION_MODES = new Set<VariationEditMode>([
 
 const SYSTEM_INSTRUCTION = `You are VIDE's internal project copilot.
 Answer the user's question using only the provided internal project data.
+Use recent conversation only to understand continuity and references.
+Treat the internal project data as the factual source of truth.
+If recent conversation conflicts with or is unsupported by the current project data, say so plainly and follow the project data.
 Do not use outside knowledge.
 If the data is insufficient, say so plainly.
 Keep the answer concise and practical.
@@ -87,6 +93,7 @@ export async function POST(
     const question = getQuestion(body);
     const selectedNodeId = getSelectedNodeId(body);
     const clientContext = getClientContext(body);
+    const conversation = getConversation(body);
 
     if (!question) {
       return NextResponse.json(
@@ -116,6 +123,13 @@ export async function POST(
       );
     }
 
+    if (conversation === undefined) {
+      return NextResponse.json(
+        { error: 'conversation is invalid' },
+        { status: 400 }
+      );
+    }
+
     const context = await buildProjectCopilotContext(
       params.id,
       selectedNodeId,
@@ -135,7 +149,7 @@ export async function POST(
 
     const rawResponse = await generateGeminiJson<CopilotModelResponse>({
       systemInstruction: SYSTEM_INSTRUCTION,
-      prompt: buildPrompt(question, context.promptContext),
+      prompt: buildPrompt(question, context.promptContext, conversation),
       responseJsonSchema: COPILOT_RESPONSE_SCHEMA,
     });
 
@@ -152,14 +166,23 @@ export async function POST(
   }
 }
 
-function buildPrompt(question: string, promptContext: string) {
-  return [
-    'User question:',
-    question,
-    '',
-    'Internal project data:',
-    promptContext,
-  ].join('\n');
+function buildPrompt(
+  question: string,
+  promptContext: string,
+  conversation: CopilotConversationMessage[] | null
+) {
+  const sections = [];
+
+  if (conversation && conversation.length > 0) {
+    sections.push(
+      ['Recent conversation:', buildConversationPrompt(conversation)].join('\n')
+    );
+  }
+
+  sections.push(['Current user question:', question].join('\n'));
+  sections.push(['Internal project data:', promptContext].join('\n'));
+
+  return sections.join('\n\n');
 }
 
 function getQuestion(body: unknown) {
@@ -188,6 +211,35 @@ function getSelectedNodeId(body: unknown) {
 
   const trimmed = selectedNodeId.trim();
   return trimmed || null;
+}
+
+function getConversation(
+  body: unknown
+): CopilotConversationMessage[] | null | undefined {
+  if (typeof body !== 'object' || body === null) {
+    return null;
+  }
+
+  const conversation = Reflect.get(body, 'conversation');
+
+  if (conversation === undefined || conversation === null) {
+    return null;
+  }
+
+  if (!Array.isArray(conversation)) {
+    return undefined;
+  }
+
+  const parsedMessages = conversation.map(parseConversationMessage);
+  if (parsedMessages.some((message) => message === null)) {
+    return undefined;
+  }
+
+  return parsedMessages
+    .filter(
+      (message): message is CopilotConversationMessage => message !== null
+    )
+    .slice(-MAX_CONVERSATION_MESSAGES);
 }
 
 function getClientContext(body: unknown): CopilotClientContext | null | undefined {
@@ -312,6 +364,31 @@ function parseLiveStagingCandidate(value: unknown) {
   };
 }
 
+function parseConversationMessage(value: unknown): CopilotConversationMessage | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const message = value as Record<string, unknown>;
+  const role = getRequiredString(message, 'role', 20);
+  const text = getRequiredString(message, 'text', MAX_CONVERSATION_TEXT_LENGTH);
+
+  if (!text || (role !== 'user' && role !== 'assistant')) {
+    return null;
+  }
+
+  return {
+    role,
+    text,
+    selectedNodeIdAtSend: getOptionalString(message, 'selectedNodeIdAtSend', 80),
+    selectedNodeLabelAtSend: getOptionalString(
+      message,
+      'selectedNodeLabelAtSend',
+      120
+    ),
+  };
+}
+
 function parseReviewDraft(
   value: unknown,
   batchId: string,
@@ -360,6 +437,21 @@ function parseVariationMode(value: string | null) {
   }
 
   return value as VariationEditMode;
+}
+
+function buildConversationPrompt(conversation: CopilotConversationMessage[]) {
+  return conversation
+    .map((message, index) => {
+      const lines = [`${index + 1}. ${message.role.toUpperCase()}`];
+
+      if (message.role === 'user' && message.selectedNodeLabelAtSend) {
+        lines.push(`Selected node at send: ${message.selectedNodeLabelAtSend}`);
+      }
+
+      lines.push(message.text);
+      return lines.join('\n');
+    })
+    .join('\n\n');
 }
 
 function sanitizeCopilotResponse(

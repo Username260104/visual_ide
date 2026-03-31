@@ -1,8 +1,10 @@
-﻿'use client';
+'use client';
 
+import { useEffect } from 'react';
 import { NodeGraph } from '@/components/graph/NodeGraph';
 import { IDELayout } from '@/components/layout/IDELayout';
 import { useProjectLoader } from '@/hooks/useProjectLoader';
+import { useCopilotStore } from '@/stores/copilotStore';
 
 export default function ProjectPage({
   params,
@@ -10,7 +12,14 @@ export default function ProjectPage({
   params: { id: string };
 }) {
   const { id } = params;
+  const clearCopilotSession = useCopilotStore((state) => state.clearSession);
   const { isReady, isLoading, error, reload } = useProjectLoader(id);
+
+  useEffect(() => {
+    return () => {
+      clearCopilotSession(id);
+    };
+  }, [clearCopilotSession, id]);
 
   if (isLoading || !isReady) {
     if (error) {
@@ -96,4 +105,3 @@ function FullscreenState({
     </div>
   );
 }
-

@@ -216,6 +216,8 @@ export interface CopilotClientContext {
   liveStagingBatches: CopilotLiveStagingBatch[];
 }
 
+export type CopilotConversationRole = 'user' | 'assistant';
+
 export type CopilotAnswerConfidence =
   | 'grounded'
   | 'partial'
@@ -240,4 +242,30 @@ export interface CopilotAnswer {
   confidence: CopilotAnswerConfidence;
   citations: CopilotCitation[];
   missingInfo: string[];
+}
+
+export interface CopilotConversationMessage {
+  role: CopilotConversationRole;
+  text: string;
+  selectedNodeIdAtSend?: string | null;
+  selectedNodeLabelAtSend?: string | null;
+}
+
+export interface CopilotSessionMessage extends CopilotConversationMessage {
+  id: string;
+  createdAt: number;
+  citations?: CopilotCitation[];
+  missingInfo?: string[];
+  confidence?: CopilotAnswerConfidence | null;
+  isError?: boolean;
+  isIntro?: boolean;
+}
+
+export interface CopilotProjectSession {
+  projectId: string;
+  draft: string;
+  messages: CopilotSessionMessage[];
+  isSubmitting: boolean;
+  requestVersion: number;
+  lastTouchedAt: number;
 }

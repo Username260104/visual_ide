@@ -1,45 +1,45 @@
-﻿'use client';
+'use client';
 
 import { ArrowRight } from 'lucide-react';
 import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
-import { fetchJson } from '@/lib/clientApi';
 import { getNodeSequenceLabel } from '@/lib/nodeVersioning';
 import type {
-  CopilotAnswer,
   CopilotAnswerConfidence,
   CopilotClientContext,
-  CopilotCitation,
   CopilotLiveStagingBatch,
+  CopilotSessionMessage,
   StagingBatch,
   StagingReviewDraft,
 } from '@/lib/types';
 import { useDirectionStore } from '@/stores/directionStore';
 import { useNodeStore } from '@/stores/nodeStore';
+import { useCopilotStore } from '@/stores/copilotStore';
 import { useStagingStore } from '@/stores/stagingStore';
 import { useUIStore } from '@/stores/uiStore';
-
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  text: string;
-  nodeLabel?: string | null;
-  citations?: CopilotCitation[];
-  missingInfo?: string[];
-  confidence?: CopilotAnswerConfidence | null;
-  isError?: boolean;
-}
 
 const STARTER_QUESTIONS = [
   '이 프로젝트에서 핵심 방향을 요약해줘.',
   '선택한 노드 기준으로 어떤 의도가 들어가 있는지 알려줘.',
   '브랜치 전략 사이 차이를 정리해줘.',
+];
+
+const FALLBACK_MESSAGES: CopilotSessionMessage[] = [
+  {
+    id: 'assistant-intro',
+    role: 'assistant',
+    text: '프로젝트 전략, 브랜치, 노드 메모와 현재 검토 중인 생성 결과를 바탕으로 답변해 드릴게요.',
+    createdAt: 0,
+    citations: [],
+    missingInfo: [],
+    confidence: null,
+    isIntro: true,
+  },
 ];
 
 export function ProjectCopilotPanel() {
@@ -49,8 +49,14 @@ export function ProjectCopilotPanel() {
   const directionProjectId = useDirectionStore((state) => state.projectId);
   const stagingBatches = useStagingStore((state) => state.batches);
   const reviewDrafts = useStagingStore((state) => state.reviewDrafts);
+  const ensureSession = useCopilotStore((state) => state.ensureSession);
+  const submitQuestion = useCopilotStore((state) => state.submitQuestion);
+  const setDraft = useCopilotStore((state) => state.setDraft);
 
   const projectId = nodeProjectId ?? directionProjectId;
+  const session = useCopilotStore((state) =>
+    projectId ? state.sessionsByProjectId[projectId] ?? null : null
+  );
   const selectedNode = selectedNodeId ? nodes[selectedNodeId] ?? null : null;
   const selectedNodeLabel = selectedNode
     ? getNodeSequenceLabel(selectedNode)
@@ -59,13 +65,10 @@ export function ProjectCopilotPanel() {
     () => buildCopilotClientContext(projectId, stagingBatches, reviewDrafts),
     [projectId, reviewDrafts, stagingBatches]
   );
-
-  const [draft, setDraft] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-
-  const requestIdRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const draft = session?.draft ?? '';
+  const isSubmitting = session?.isSubmitting ?? false;
+  const messages = session?.messages ?? FALLBACK_MESSAGES;
 
   const canSubmit = draft.trim().length > 0 && !isSubmitting && Boolean(projectId);
   const subtitle = useMemo(
@@ -77,105 +80,46 @@ export function ProjectCopilotPanel() {
   );
 
   useEffect(() => {
-    requestIdRef.current += 1;
-    setDraft('');
-    setIsSubmitting(false);
-    setMessages(projectId ? [buildIntroMessage()] : []);
-  }, [projectId]);
+    if (!projectId) {
+      return;
+    }
+
+    ensureSession(projectId);
+  }, [ensureSession, projectId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, isSubmitting]);
 
-  const submitQuestion = async (questionText: string) => {
-    if (!projectId || isSubmitting) {
-      return;
-    }
-
-    const question = questionText.trim();
-    if (!question) {
-      return;
-    }
-
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-
-    setMessages((current) => [
-      ...current,
-      {
-        id: `user-${requestId}`,
-        role: 'user',
-        text: question,
-        nodeLabel: selectedNodeLabel,
-      },
-    ]);
-    setDraft('');
-    setIsSubmitting(true);
-
-    try {
-      const answer = await fetchJson<CopilotAnswer>(`/api/projects/${projectId}/copilot`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question,
-          selectedNodeId,
-          clientContext,
-        }),
-      });
-
-      if (requestIdRef.current !== requestId) {
-        return;
-      }
-
-      setMessages((current) => [
-        ...current,
-        {
-          id: `assistant-${requestId}`,
-          role: 'assistant',
-          text: answer.answer,
-          citations: answer.citations,
-          missingInfo: answer.missingInfo,
-          confidence: answer.confidence,
-        },
-      ]);
-    } catch (error) {
-      if (requestIdRef.current !== requestId) {
-        return;
-      }
-
-      setMessages((current) => [
-        ...current,
-        {
-          id: `assistant-error-${requestId}`,
-          role: 'assistant',
-          text:
-            error instanceof Error && error.message.trim()
-              ? error.message
-              : '답변을 가져오지 못했습니다.',
-          citations: [],
-          missingInfo: [],
-          confidence: null,
-          isError: true,
-        },
-      ]);
-    } finally {
-      if (requestIdRef.current === requestId) {
-        setIsSubmitting(false);
-      }
-    }
-  };
-
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void submitQuestion(draft);
+    if (!projectId) {
+      return;
+    }
+
+    void submitQuestion({
+      projectId,
+      question: draft,
+      selectedNodeId,
+      selectedNodeLabel,
+      clientContext,
+    });
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      if (canSubmit) {
-        void submitQuestion(draft);
+      if (!canSubmit || !projectId) {
+        return;
       }
+
+      void submitQuestion({
+        projectId,
+        question: draft,
+        selectedNodeId,
+        selectedNodeLabel,
+        clientContext,
+      });
     }
   };
 
@@ -227,7 +171,7 @@ export function ProjectCopilotPanel() {
                     color: 'var(--text-secondary)',
                     border: '1px solid var(--border-default)',
                   }}
-                  onClick={() => setDraft(question)}
+                  onClick={() => setDraft(projectId, question)}
                 >
                   {question}
                 </button>
@@ -265,7 +209,7 @@ export function ProjectCopilotPanel() {
 
         <textarea
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => setDraft(projectId, event.target.value)}
           onKeyDown={handleKeyDown}
           rows={4}
           placeholder="무엇이든 물어보세요."
@@ -297,7 +241,7 @@ export function ProjectCopilotPanel() {
   );
 }
 
-function ChatBubble({ message }: { message: ChatMessage }) {
+function ChatBubble({ message }: { message: CopilotSessionMessage }) {
   const isUser = message.role === 'user';
   const citations = message.citations ?? [];
   const missingInfo = message.missingInfo ?? [];
@@ -327,9 +271,9 @@ function ChatBubble({ message }: { message: ChatMessage }) {
           <p className="whitespace-pre-wrap break-words">{message.text}</p>
         </div>
 
-        {isUser && message.nodeLabel && (
+        {isUser && message.selectedNodeLabelAtSend && (
           <div className="mt-1 text-right text-[10px]" style={{ color: 'var(--text-muted)' }}>
-            기준 노드 {message.nodeLabel}
+            기준 노드 {message.selectedNodeLabelAtSend}
           </div>
         )}
 
@@ -391,17 +335,6 @@ function TypingBubble() {
       </div>
     </div>
   );
-}
-
-function buildIntroMessage(): ChatMessage {
-  return {
-    id: 'assistant-intro',
-    role: 'assistant',
-    text: '프로젝트 전략, 브랜치, 노드 메모와 현재 검토 중인 생성 결과를 바탕으로 답변해 드릴게요.',
-    citations: [],
-    missingInfo: [],
-    confidence: null,
-  };
 }
 
 function buildCopilotClientContext(
